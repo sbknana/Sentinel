@@ -38,7 +38,7 @@
     fetchStatus();
 
     // SSE for real-time updates
-    const evtSource = new EventSource('/events');
+    const evtSource = new EventSource('/api/events');
     evtSource.addEventListener('metrics', (e) => {
       document.getElementById('output').textContent = e.data;
     });

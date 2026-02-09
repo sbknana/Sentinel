@@ -1,0 +1,44 @@
+{
+    "port": 3000,
+    "collection_interval_seconds": 30,
+    "theforge_db_path": "/srv/forge-share/AI_Stuff/ForgeTeam/theforge.db",
+    "hosts": [
+        {
+            "name": "claudinator",
+            "type": "local"
+        },
+        {
+            "name": "cryptotrader-vm",
+            "type": "ssh",
+            "ssh_host": "10.10.10.2",
+            "ssh_user": "user",
+            "ssh_key_path": "/home/user/.ssh/id_ed25519"
+        },
+        {
+            "name": "arcanedesk-vm",
+            "type": "ssh",
+            "ssh_host": "10.10.10.3",
+            "ssh_user": "user",
+            "ssh_key_path": "/home/user/.ssh/id_ed25519"
+        }
+    ],
+    "default_alerts": [
+        { "metric": "disk_percent", "operator": ">", "threshold": 90, "severity": "critical" },
+        { "metric": "memory_percent", "operator": ">", "threshold": 85, "severity": "warning" },
+        { "metric": "cpu_percent", "operator": ">", "threshold": 95, "severity": "warning" }
+    ],
+    "retention": {
+        "metrics_full_days": 7,
+        "metrics_downsampled_days": 30,
+        "containers_days": 7,
+        "alert_history_days": 90
+    },
+    "backups": [
+        {
+            "name": "local-restic",
+            "type": "restic",
+            "repo_path": "/path/to/restic/repo",
+            "stale_hours": 24
+        }
+    ]
+}
