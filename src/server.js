@@ -10,6 +10,8 @@ const alertsRoutes = require('./routes/alerts');
 const backupsRoutes = require('./routes/backups');
 const configRoutes = require('./routes/configRoute');
 const eventsRoutes = require('./routes/events');
+const forgeRoutes = require('./routes/forge');
+const scheduler = require('./scheduler');
 
 const app = express();
 
@@ -24,6 +26,7 @@ app.use('/api/alerts', alertsRoutes);
 app.use('/api/backups', backupsRoutes);
 app.use('/api/config', configRoutes);
 app.use('/api/events', eventsRoutes);
+app.use('/api/forge', forgeRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
@@ -36,11 +39,13 @@ seedFromConfig();
 
 const server = app.listen(config.port, () => {
   console.log(`Sentinel listening on http://localhost:${config.port}`);
+  scheduler.start();
 });
 
 // Graceful shutdown
 function shutdown() {
   console.log('Shutting down...');
+  scheduler.stop();
   server.close(() => {
     closeDb();
     process.exit(0);

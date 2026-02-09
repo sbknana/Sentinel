@@ -1,7 +1,7 @@
 {
     "port": 3000,
     "collection_interval_seconds": 30,
-    "theforge_db_path": "/srv/forge-share/AI_Stuff/ForgeTeam/theforge.db",
+    "theforge_db_path": "/srv/forge-share/AI_Stuff/TheForge/theforge.db",
     "hosts": [
         {
             "name": "claudinator",
@@ -25,7 +25,8 @@
     "default_alerts": [
         { "metric": "disk_percent", "operator": ">", "threshold": 90, "severity": "critical" },
         { "metric": "memory_percent", "operator": ">", "threshold": 85, "severity": "warning" },
-        { "metric": "cpu_percent", "operator": ">", "threshold": 95, "severity": "warning" }
+        { "metric": "cpu_percent", "operator": ">", "threshold": 95, "severity": "warning" },
+        { "metric": "backup_stale", "operator": ">", "threshold": 24, "severity": "warning" }
     ],
     "retention": {
         "metrics_full_days": 7,
@@ -38,6 +39,12 @@
             "name": "local-restic",
             "type": "restic",
             "repo_path": "/path/to/restic/repo",
+            "stale_hours": 24
+        },
+        {
+            "name": "offsite-linode",
+            "type": "restic",
+            "repo_path": "sftp:user@linode-host:/path/to/restic/repo",
             "stale_hours": 24
         }
     ]
