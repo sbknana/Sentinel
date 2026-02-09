@@ -7,6 +7,7 @@
 const { collectAll: collectVmHealth } = require('./vm-health');
 const { collectDockerAll, collectDocker, checkContainerAlerts } = require('./docker');
 const { collectBackupStatus } = require('./backup');
+const { healCrashedContainers } = require('../alerts/healing');
 
 module.exports = {
   collectVmHealth,
@@ -14,4 +15,5 @@ module.exports = {
   collectDocker,
   checkContainerAlerts,
   collectBackupStatus,
+  healCrashedContainers,
 };
