@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sentinel - Infrastructure Monitor</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace;
+      background: #0d1117;
+      color: #c9d1d9;
+      padding: 2rem;
+    }
+    h1 { color: #58a6ff; margin-bottom: 1rem; }
+    .status { color: #3fb950; }
+    pre { background: #161b22; padding: 1rem; border-radius: 6px; margin-top: 1rem; overflow-x: auto; }
+  </style>
+</head>
+<body>
+  <h1>Sentinel</h1>
+  <p>Infrastructure monitoring dashboard</p>
+  <p class="status" id="status">Connecting...</p>
+  <pre id="output">Loading...</pre>
+
+  <script>
+    async function fetchStatus() {
+      try {
+        const res = await fetch('/api/status');
+        const data = await res.json();
+        document.getElementById('output').textContent = JSON.stringify(data, null, 2);
+        document.getElementById('status').textContent = 'Connected';
+      } catch (err) {
+        document.getElementById('status').textContent = 'Error: ' + err.message;
+        document.getElementById('status').style.color = '#f85149';
+      }
+    }
+    fetchStatus();
+
+    // SSE for real-time updates
+    const evtSource = new EventSource('/events');
+    evtSource.addEventListener('metrics', (e) => {
+      document.getElementById('output').textContent = e.data;
+    });
+    evtSource.onerror = () => {
+      document.getElementById('status').textContent = 'SSE disconnected - reconnecting...';
+      document.getElementById('status').style.color = '#d29922';
+    };
+  </script>
+</body>
+</html>
