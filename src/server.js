@@ -11,6 +11,7 @@ const backupsRoutes = require('./routes/backups');
 const configRoutes = require('./routes/configRoute');
 const eventsRoutes = require('./routes/events');
 const forgeRoutes = require('./routes/forge');
+const healingRoutes = require('./routes/healing');
 const scheduler = require('./scheduler');
 
 const app = express();
@@ -27,6 +28,7 @@ app.use('/api/backups', backupsRoutes);
 app.use('/api/config', configRoutes);
 app.use('/api/events', eventsRoutes);
 app.use('/api/forge', forgeRoutes);
+app.use('/api/healing', healingRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
