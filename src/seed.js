@@ -20,16 +20,17 @@ function seedFromConfig() {
     );
   }
 
-  // Seed default alert rules (only if alerts table is empty)
-  const alertCount = db.prepare('SELECT COUNT(*) AS count FROM alerts').get();
-  if (alertCount.count === 0) {
-    const insertAlert = db.prepare(`
-      INSERT INTO alerts (host_id, metric, operator, threshold, severity)
-      VALUES (?, ?, ?, ?, ?)
-    `);
-    for (const alert of config.defaultAlerts) {
-      insertAlert.run(null, alert.metric, alert.operator, alert.threshold, alert.severity);
-    }
+  // Seed default alert rules (skip if rule with same metric+operator+threshold exists)
+  const insertAlert = db.prepare(`
+    INSERT INTO alerts (host_id, metric, operator, threshold, severity)
+    SELECT ?, ?, ?, ?, ?
+    WHERE NOT EXISTS (
+      SELECT 1 FROM alerts WHERE metric = ? AND operator = ? AND threshold = ? AND host_id IS NULL
+    )
+  `);
+  for (const alert of config.defaultAlerts) {
+    insertAlert.run(null, alert.metric, alert.operator, alert.threshold, alert.severity,
+      alert.metric, alert.operator, alert.threshold);
   }
 
   // Seed backup entries from config

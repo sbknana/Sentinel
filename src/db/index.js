@@ -96,9 +96,22 @@ function initSchema() {
       details TEXT
     );
 
+    CREATE TABLE IF NOT EXISTS healing_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      host_id INTEGER NOT NULL REFERENCES hosts(id),
+      container_name TEXT NOT NULL,
+      container_id TEXT,
+      action TEXT NOT NULL DEFAULT 'restart',
+      reason TEXT,
+      result TEXT NOT NULL,
+      error_message TEXT,
+      executed_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
     CREATE INDEX IF NOT EXISTS idx_metrics_host_time ON metrics(host_id, collected_at);
     CREATE INDEX IF NOT EXISTS idx_containers_host_time ON containers(host_id, collected_at);
     CREATE INDEX IF NOT EXISTS idx_alert_history_fired ON alert_history(fired_at);
+    CREATE INDEX IF NOT EXISTS idx_healing_log_time ON healing_log(executed_at);
   `);
 }
 

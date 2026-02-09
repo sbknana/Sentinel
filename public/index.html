@@ -4,14 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sentinel - Infrastructure Monitor</title>
+  <!-- Copyright 2026, TheForge, LLC -->
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace;
       background: #0d1117;
       color: #c9d1d9;
-      padding: 2rem;
-      max-width: 1400px;
+      padding: 1.25rem;
+      max-width: 1440px;
       margin: 0 auto;
     }
 
@@ -20,15 +21,35 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 1.5rem;
-      padding-bottom: 1rem;
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.75rem;
       border-bottom: 1px solid #21262d;
     }
-    .header h1 { color: #58a6ff; }
-    .header .status-indicator { font-size: 0.9rem; }
+    .header h1 { color: #58a6ff; font-size: 1.35rem; }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      font-size: 0.85rem;
+    }
+    .overall-status {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .overall-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .overall-dot.ok { background: #3fb950; }
+    .overall-dot.warn { background: #d29922; }
+    .overall-dot.error { background: #f85149; }
     .status-ok { color: #3fb950; }
     .status-warn { color: #d29922; }
     .status-error { color: #f85149; }
+    .sse-status { font-size: 0.8rem; color: #8b949e; }
 
     /* Section layout */
     .section {
@@ -40,11 +61,196 @@
     }
     .section h2 {
       color: #58a6ff;
-      font-size: 1rem;
+      font-size: 0.95rem;
       margin-bottom: 0.75rem;
       display: flex;
       align-items: center;
       gap: 0.5rem;
+    }
+
+    /* Host cards grid */
+    .host-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 0.75rem;
+    }
+    .host-card {
+      background: #0d1117;
+      border: 1px solid #21262d;
+      border-radius: 6px;
+      padding: 0.75rem 1rem;
+    }
+    .host-card.host-offline {
+      border-color: #f8514955;
+      opacity: 0.7;
+    }
+    .host-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.6rem;
+    }
+    .host-name {
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: #c9d1d9;
+    }
+    .host-type {
+      font-size: 0.7rem;
+      color: #484f58;
+      text-transform: uppercase;
+    }
+    .host-uptime {
+      font-size: 0.7rem;
+      color: #8b949e;
+      margin-bottom: 0.5rem;
+    }
+    .metric-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.35rem;
+      font-size: 0.8rem;
+    }
+    .metric-label { color: #8b949e; min-width: 40px; }
+    .metric-bar-container {
+      flex: 1;
+      height: 6px;
+      background: #21262d;
+      border-radius: 3px;
+      margin: 0 0.5rem;
+      overflow: hidden;
+    }
+    .metric-bar {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.5s ease;
+    }
+    .metric-bar.bar-ok { background: #3fb950; }
+    .metric-bar.bar-warn { background: #d29922; }
+    .metric-bar.bar-crit { background: #f85149; }
+    .metric-value {
+      min-width: 38px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    .load-row {
+      display: flex;
+      gap: 0.5rem;
+      font-size: 0.75rem;
+      color: #8b949e;
+      margin-top: 0.35rem;
+      padding-top: 0.35rem;
+      border-top: 1px solid #21262d;
+    }
+    .load-row span { white-space: nowrap; }
+
+    /* Alerts panel (right side in top row) */
+    .top-row {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    @media (max-width: 900px) {
+      .top-row { grid-template-columns: 1fr; }
+    }
+    .alert-list { list-style: none; }
+    .alert-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      padding: 0.4rem 0;
+      border-bottom: 1px solid #21262d;
+      font-size: 0.8rem;
+    }
+    .alert-item:last-child { border-bottom: none; }
+    .alert-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-top: 0.25rem;
+    }
+    .alert-dot.critical { background: #f85149; }
+    .alert-dot.warning { background: #d29922; }
+    .alert-dot.info { background: #58a6ff; }
+    .alert-text { flex: 1; }
+    .alert-time { color: #484f58; font-size: 0.7rem; white-space: nowrap; }
+    .alert-ack-btn {
+      background: none;
+      border: 1px solid #30363d;
+      color: #8b949e;
+      font-size: 0.65rem;
+      padding: 0.1rem 0.35rem;
+      border-radius: 3px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .alert-ack-btn:hover { background: #21262d; color: #c9d1d9; }
+    .alert-count-badge {
+      background: #f8514933;
+      color: #f85149;
+      border: 1px solid #f8514955;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      padding: 0.1rem 0.45rem;
+      font-weight: 600;
+    }
+    .alert-count-badge.none {
+      background: #3fb95033;
+      color: #3fb950;
+      border-color: #3fb95055;
+    }
+
+    /* Container cards */
+    .container-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 0.6rem;
+    }
+    .container-card {
+      background: #0d1117;
+      border: 1px solid #21262d;
+      border-radius: 6px;
+      padding: 0.6rem 0.8rem;
+    }
+    .container-card.container-running { border-left: 3px solid #3fb950; }
+    .container-card.container-exited { border-left: 3px solid #f85149; }
+    .container-card.container-paused { border-left: 3px solid #d29922; }
+    .container-card.container-other { border-left: 3px solid #484f58; }
+    .container-name {
+      font-weight: 600;
+      font-size: 0.85rem;
+      margin-bottom: 0.15rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .container-host {
+      font-size: 0.7rem;
+      color: #484f58;
+      margin-bottom: 0.3rem;
+    }
+    .container-status {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: 0.75rem;
+      margin-bottom: 0.2rem;
+    }
+    .container-status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+    .container-status-dot.running { background: #3fb950; }
+    .container-status-dot.exited { background: #f85149; }
+    .container-status-dot.paused { background: #d29922; }
+    .container-status-dot.other { background: #484f58; }
+    .container-resources {
+      font-size: 0.7rem;
+      color: #8b949e;
     }
 
     /* Summary bar */
@@ -54,9 +260,7 @@
       flex-wrap: wrap;
       margin-bottom: 1rem;
     }
-    .summary-stat {
-      text-align: center;
-    }
+    .summary-stat { text-align: center; }
     .summary-stat .value {
       font-size: 1.5rem;
       font-weight: bold;
@@ -215,16 +419,7 @@
     /* Loading / error states */
     .loading { color: #8b949e; font-style: italic; }
     .error-msg { color: #f85149; }
-
-    /* Existing pre block for raw status */
-    pre {
-      background: #161b22;
-      padding: 1rem;
-      border-radius: 6px;
-      margin-top: 1rem;
-      overflow-x: auto;
-      font-size: 0.85rem;
-    }
+    .empty-msg { color: #484f58; font-size: 0.85rem; font-style: italic; }
 
     /* Two-column layout for forge section */
     .forge-columns {
@@ -235,20 +430,115 @@
     @media (max-width: 900px) {
       .forge-columns { grid-template-columns: 1fr; }
     }
+
+    /* Backup cards */
+    .backup-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 0.75rem;
+    }
+    .backup-card {
+      background: #0d1117;
+      border: 1px solid #21262d;
+      border-radius: 6px;
+      padding: 0.75rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .backup-card.backup-ok { border-left: 3px solid #3fb950; }
+    .backup-card.backup-stale { border-left: 3px solid #d29922; }
+    .backup-card.backup-error { border-left: 3px solid #f85149; }
+    .backup-card.backup-unknown { border-left: 3px solid #484f58; }
+    .backup-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .backup-dot.dot-ok { background: #3fb950; }
+    .backup-dot.dot-stale { background: #d29922; }
+    .backup-dot.dot-error { background: #f85149; }
+    .backup-dot.dot-unknown { background: #484f58; }
+    .backup-info { flex: 1; }
+    .backup-name { font-weight: 600; font-size: 0.9rem; }
+    .backup-detail {
+      font-size: 0.8rem;
+      color: #8b949e;
+      margin-top: 0.15rem;
+    }
+    .backup-status-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .backup-status-label.status-ok { color: #3fb950; }
+    .backup-status-label.status-stale { color: #d29922; }
+    .backup-status-label.status-error { color: #f85149; }
+    .backup-status-label.status-unknown { color: #484f58; }
+    .backup-check-btn {
+      background: #21262d;
+      border: 1px solid #30363d;
+      color: #c9d1d9;
+      padding: 0.3rem 0.6rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.75rem;
+    }
+    .backup-check-btn:hover { background: #30363d; }
+    .backup-check-btn:disabled { opacity: 0.5; cursor: wait; }
+
+    /* Responsive adjustments */
+    @media (max-width: 600px) {
+      body { padding: 0.75rem; }
+      .host-grid { grid-template-columns: 1fr; }
+      .container-grid { grid-template-columns: 1fr; }
+      .top-row { grid-template-columns: 1fr; }
+      .backup-grid { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
+  <!-- Header -->
   <div class="header">
     <h1>Sentinel</h1>
-    <span class="status-indicator" id="conn-status">
-      <span class="status-ok" id="status">Connecting...</span>
-    </span>
+    <div class="header-right">
+      <div class="overall-status" id="overall-status">
+        <span class="overall-dot ok" id="overall-dot"></span>
+        <span id="overall-text">Connecting...</span>
+      </div>
+      <span class="sse-status" id="sse-status">SSE: connecting</span>
+    </div>
   </div>
 
-  <!-- System status (existing) -->
-  <div class="section" id="system-section">
-    <h2>System Status</h2>
-    <pre id="output">Loading...</pre>
+  <!-- Top row: Host cards + Active Alerts -->
+  <div class="top-row">
+    <!-- VM Host Cards -->
+    <div class="section" id="hosts-section">
+      <h2>Hosts</h2>
+      <div class="host-grid" id="host-grid">
+        <span class="loading">Loading hosts...</span>
+      </div>
+    </div>
+
+    <!-- Active Alerts -->
+    <div class="section" id="alerts-section">
+      <h2>
+        Active Alerts
+        <span class="alert-count-badge none" id="alert-count">0</span>
+      </h2>
+      <ul class="alert-list" id="alert-list">
+        <li class="empty-msg">No active alerts</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Docker Containers -->
+  <div class="section" id="containers-section">
+    <h2>Docker Containers</h2>
+    <div class="container-grid" id="container-grid">
+      <span class="loading">Loading containers...</span>
+    </div>
   </div>
 
   <!-- ForgeTeam Activity -->
@@ -256,7 +546,6 @@
     <h2>ForgeTeam Activity</h2>
 
     <div id="forge-summary" class="summary-bar"></div>
-
     <div id="forge-stale"></div>
 
     <div class="tabs">
@@ -306,47 +595,28 @@
     </div>
   </div>
 
+  <!-- Backup Status -->
+  <div class="section" id="backup-section">
+    <h2>
+      Backups
+      <button class="backup-check-btn" id="backup-check-btn" onclick="checkBackupsNow()">Check Now</button>
+    </h2>
+    <div class="backup-grid" id="backup-grid">
+      <span class="loading">Loading backup status...</span>
+    </div>
+  </div>
+
   <script>
-    // -- Existing system status --
-    async function fetchStatus() {
-      try {
-        const res = await fetch('/api/status');
-        const data = await res.json();
-        document.getElementById('output').textContent = JSON.stringify(data, null, 2);
-        document.getElementById('status').textContent = 'Connected';
-        document.getElementById('status').className = 'status-ok';
-      } catch (err) {
-        document.getElementById('status').textContent = 'Error: ' + err.message;
-        document.getElementById('status').className = 'status-error';
-      }
+    // =============================================
+    // Helpers
+    // =============================================
+    function escapeHtml(str) {
+      if (!str) return '';
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
     }
-    fetchStatus();
 
-    // SSE for real-time updates
-    const evtSource = new EventSource('/api/events');
-    evtSource.addEventListener('metrics', (e) => {
-      document.getElementById('output').textContent = e.data;
-    });
-    evtSource.addEventListener('forge-update', () => {
-      loadForgeTasks();
-      loadForgeActivity();
-    });
-    evtSource.onerror = () => {
-      document.getElementById('status').textContent = 'SSE disconnected - reconnecting...';
-      document.getElementById('status').className = 'status-warn';
-    };
-
-    // -- Tab switching --
-    document.querySelectorAll('.tab').forEach(tab => {
-      tab.addEventListener('click', () => {
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-        tab.classList.add('active');
-        document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
-      });
-    });
-
-    // -- Helpers --
     function timeAgo(dateStr) {
       if (!dateStr) return '';
       const now = new Date();
@@ -361,14 +631,289 @@
       return days + 'd ago';
     }
 
-    function escapeHtml(str) {
-      if (!str) return '';
-      const div = document.createElement('div');
-      div.textContent = str;
-      return div.innerHTML;
+    function formatUptime(seconds) {
+      if (!seconds && seconds !== 0) return '--';
+      const d = Math.floor(seconds / 86400);
+      const h = Math.floor((seconds % 86400) / 3600);
+      if (d > 0) return d + 'd ' + h + 'h';
+      const m = Math.floor((seconds % 3600) / 60);
+      if (h > 0) return h + 'h ' + m + 'm';
+      return m + 'm';
     }
 
-    // -- ForgeTeam: Tasks --
+    function formatAge(hours) {
+      if (hours == null) return 'unknown';
+      if (hours < 1) return Math.round(hours * 60) + 'm';
+      if (hours < 24) return hours.toFixed(1) + 'h';
+      return Math.floor(hours / 24) + 'd ' + Math.round(hours % 24) + 'h';
+    }
+
+    function barClass(percent) {
+      if (percent >= 90) return 'bar-crit';
+      if (percent >= 70) return 'bar-warn';
+      return 'bar-ok';
+    }
+
+    function formatMem(mb) {
+      if (mb == null) return '--';
+      if (mb >= 1024) return (mb / 1024).toFixed(1) + 'G';
+      return Math.round(mb) + 'M';
+    }
+
+    // =============================================
+    // Host Cards
+    // =============================================
+    function renderHostCard(host) {
+      const m = host.latest_metrics;
+      if (!m) {
+        return `
+          <div class="host-card host-offline">
+            <div class="host-card-header">
+              <span class="host-name">${escapeHtml(host.name)}</span>
+              <span class="host-type">${escapeHtml(host.type)}</span>
+            </div>
+            <div class="host-uptime">No metrics collected yet</div>
+          </div>`;
+      }
+      return `
+        <div class="host-card">
+          <div class="host-card-header">
+            <span class="host-name">${escapeHtml(host.name)}</span>
+            <span class="host-type">${escapeHtml(host.type)}</span>
+          </div>
+          <div class="host-uptime">Up: ${formatUptime(m.uptime_seconds)}</div>
+          ${renderMetricRow('CPU', m.cpu_percent)}
+          ${renderMetricRow('RAM', m.memory_percent, formatMem(m.memory_used_mb) + '/' + formatMem(m.memory_total_mb))}
+          ${renderMetricRow('Disk', m.disk_percent, (m.disk_used_gb != null ? m.disk_used_gb.toFixed(0) + '/' + (m.disk_total_gb || 0).toFixed(0) + 'G' : null))}
+          <div class="load-row">
+            <span>Load: ${m.load_1m != null ? m.load_1m.toFixed(2) : '--'}</span>
+            <span>${m.load_5m != null ? m.load_5m.toFixed(2) : '--'}</span>
+            <span>${m.load_15m != null ? m.load_15m.toFixed(2) : '--'}</span>
+          </div>
+        </div>`;
+    }
+
+    function renderMetricRow(label, percent, detail) {
+      const pct = percent != null ? percent : 0;
+      const cls = barClass(pct);
+      const displayVal = percent != null ? percent.toFixed(1) + '%' : '--';
+      const tooltip = detail ? ` title="${escapeHtml(detail)}"` : '';
+      return `
+        <div class="metric-row"${tooltip}>
+          <span class="metric-label">${label}</span>
+          <div class="metric-bar-container">
+            <div class="metric-bar ${cls}" style="width:${pct}%"></div>
+          </div>
+          <span class="metric-value">${displayVal}</span>
+        </div>`;
+    }
+
+    async function loadHosts() {
+      try {
+        const res = await fetch('/api/hosts');
+        if (!res.ok) throw new Error('API returned ' + res.status);
+        const hosts = await res.json();
+        const grid = document.getElementById('host-grid');
+        if (!hosts || hosts.length === 0) {
+          grid.innerHTML = '<span class="empty-msg">No hosts configured</span>';
+          return;
+        }
+        grid.innerHTML = hosts.map(renderHostCard).join('');
+        updateOverallStatus(hosts);
+      } catch (err) {
+        document.getElementById('host-grid').innerHTML =
+          '<span class="error-msg">Failed to load hosts: ' + escapeHtml(err.message) + '</span>';
+      }
+    }
+
+    function updateOverallStatus(hosts) {
+      const dot = document.getElementById('overall-dot');
+      const text = document.getElementById('overall-text');
+      const hasMetrics = hosts.some(h => h.latest_metrics);
+      if (!hasMetrics) {
+        dot.className = 'overall-dot warn';
+        text.textContent = 'Waiting for metrics...';
+        return;
+      }
+      const anyCritical = hosts.some(h => {
+        const m = h.latest_metrics;
+        return m && (m.cpu_percent >= 95 || m.memory_percent >= 90 || m.disk_percent >= 90);
+      });
+      const anyWarn = hosts.some(h => {
+        const m = h.latest_metrics;
+        return m && (m.cpu_percent >= 80 || m.memory_percent >= 75 || m.disk_percent >= 75);
+      });
+      if (anyCritical) {
+        dot.className = 'overall-dot error';
+        text.textContent = 'Critical issues detected';
+        text.className = 'status-error';
+      } else if (anyWarn) {
+        dot.className = 'overall-dot warn';
+        text.textContent = 'Warnings present';
+        text.className = 'status-warn';
+      } else {
+        dot.className = 'overall-dot ok';
+        text.textContent = 'All Systems Operational';
+        text.className = 'status-ok';
+      }
+    }
+
+    // =============================================
+    // Containers
+    // =============================================
+    function containerStatusClass(status) {
+      if (status === 'running') return 'running';
+      if (status === 'exited' || status === 'dead') return 'exited';
+      if (status === 'paused') return 'paused';
+      return 'other';
+    }
+
+    function renderContainerCard(c) {
+      const cls = containerStatusClass(c.status);
+      return `
+        <div class="container-card container-${cls}">
+          <div class="container-name" title="${escapeHtml(c.image || '')}">${escapeHtml(c.name)}</div>
+          <div class="container-host">${escapeHtml(c.host_name)}</div>
+          <div class="container-status">
+            <span class="container-status-dot ${cls}"></span>
+            ${escapeHtml(c.status)}${c.uptime ? ' (' + escapeHtml(c.uptime) + ')' : ''}
+          </div>
+          <div class="container-resources">
+            ${c.cpu_percent != null ? 'CPU: ' + c.cpu_percent.toFixed(1) + '%' : ''}
+            ${c.memory_mb != null ? ' Mem: ' + formatMem(c.memory_mb) : ''}
+          </div>
+        </div>`;
+    }
+
+    async function loadContainers() {
+      try {
+        const res = await fetch('/api/containers');
+        if (!res.ok) throw new Error('API returned ' + res.status);
+        const containers = await res.json();
+        const grid = document.getElementById('container-grid');
+        if (!containers || containers.length === 0) {
+          grid.innerHTML = '<span class="empty-msg">No containers found</span>';
+          return;
+        }
+        grid.innerHTML = containers.map(renderContainerCard).join('');
+      } catch (err) {
+        document.getElementById('container-grid').innerHTML =
+          '<span class="error-msg">Failed to load containers: ' + escapeHtml(err.message) + '</span>';
+      }
+    }
+
+    // =============================================
+    // Active Alerts
+    // =============================================
+    async function loadAlerts() {
+      try {
+        const res = await fetch('/api/alerts/history?limit=20');
+        if (!res.ok) throw new Error('API returned ' + res.status);
+        const history = await res.json();
+
+        const active = history.filter(a => !a.resolved_at);
+        const countEl = document.getElementById('alert-count');
+        countEl.textContent = active.length;
+        countEl.className = active.length > 0 ? 'alert-count-badge' : 'alert-count-badge none';
+
+        const listEl = document.getElementById('alert-list');
+        if (active.length === 0) {
+          listEl.innerHTML = '<li class="empty-msg">No active alerts</li>';
+          return;
+        }
+        listEl.innerHTML = active.map(a => `
+          <li class="alert-item">
+            <span class="alert-dot ${escapeHtml(a.severity)}"></span>
+            <span class="alert-text">
+              ${escapeHtml(a.message || (a.metric + ' ' + a.operator + ' ' + a.threshold))}
+              <br><span style="color:#484f58;font-size:0.7rem">${escapeHtml(a.host_name)}</span>
+            </span>
+            <span class="alert-time">${timeAgo(a.fired_at)}</span>
+            <button class="alert-ack-btn" onclick="ackAlert(${a.id})">Ack</button>
+          </li>
+        `).join('');
+      } catch (err) {
+        document.getElementById('alert-list').innerHTML =
+          '<li class="error-msg">Failed to load alerts: ' + escapeHtml(err.message) + '</li>';
+      }
+    }
+
+    async function ackAlert(id) {
+      try {
+        const res = await fetch('/api/alerts/history/' + id + '/acknowledge', { method: 'POST' });
+        if (!res.ok) throw new Error('API returned ' + res.status);
+        await loadAlerts();
+      } catch (err) {
+        // Silently retry on next refresh
+      }
+    }
+
+    // =============================================
+    // Backup Status
+    // =============================================
+    function renderBackupCard(b) {
+      const statusClass = b.status === 'ok' ? 'ok' : b.status === 'stale' ? 'stale' : b.status === 'error' ? 'error' : 'unknown';
+      const statusLabel = b.status ? b.status.toUpperCase() : 'UNKNOWN';
+      let detail = '';
+      if (b.status === 'ok' && b.age_hours != null) {
+        detail = 'Last backup: ' + formatAge(b.age_hours) + ' ago';
+      } else if (b.status === 'stale' && b.age_hours != null) {
+        detail = 'Last backup: ' + formatAge(b.age_hours) + ' ago (threshold: ' + (b.stale_hours || 24) + 'h)';
+      } else if (b.status === 'error') {
+        detail = b.details || 'Failed to check repository';
+      } else if (b.last_check) {
+        detail = 'Last checked: ' + timeAgo(b.last_check);
+      } else {
+        detail = 'Never checked';
+      }
+      return `
+        <div class="backup-card backup-${statusClass}">
+          <div class="backup-dot dot-${statusClass}"></div>
+          <div class="backup-info">
+            <div class="backup-name">${escapeHtml(b.name)}</div>
+            <div class="backup-detail">${escapeHtml(detail)}</div>
+          </div>
+          <div class="backup-status-label status-${statusClass}">${statusLabel}</div>
+        </div>`;
+    }
+
+    async function loadBackups() {
+      try {
+        const res = await fetch('/api/backups');
+        if (!res.ok) throw new Error('API returned ' + res.status);
+        const backups = await res.json();
+        const grid = document.getElementById('backup-grid');
+        if (!backups || backups.length === 0) {
+          grid.innerHTML = '<span class="empty-msg">No backups configured</span>';
+          return;
+        }
+        grid.innerHTML = backups.map(renderBackupCard).join('');
+      } catch (err) {
+        document.getElementById('backup-grid').innerHTML =
+          '<span class="error-msg">Failed to load backups: ' + escapeHtml(err.message) + '</span>';
+      }
+    }
+
+    async function checkBackupsNow() {
+      const btn = document.getElementById('backup-check-btn');
+      btn.disabled = true;
+      btn.textContent = 'Checking...';
+      try {
+        const res = await fetch('/api/backups/check', { method: 'POST' });
+        if (!res.ok) throw new Error('API returned ' + res.status);
+        await loadBackups();
+      } catch (err) {
+        document.getElementById('backup-grid').innerHTML =
+          '<span class="error-msg">Check failed: ' + escapeHtml(err.message) + '</span>';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Check Now';
+      }
+    }
+
+    // =============================================
+    // ForgeTeam: Tasks
+    // =============================================
     async function loadForgeTasks() {
       try {
         const res = await fetch('/api/forge/tasks');
@@ -411,7 +956,9 @@
       }
     }
 
-    // -- ForgeTeam: Activity --
+    // =============================================
+    // ForgeTeam: Activity
+    // =============================================
     async function loadForgeActivity() {
       try {
         const res = await fetch('/api/forge/activity?limit=15');
@@ -425,7 +972,7 @@
             <div class="stale-warning">
               ${data.stale_items.length} stale task(s) in_progress for 24h+:
               ${data.stale_items.map(s =>
-                `#${s.id} ${escapeHtml(s.title)} (${escapeHtml(s.project_codename || s.project_name)})`
+                '#' + s.id + ' ' + escapeHtml(s.title) + ' (' + escapeHtml(s.project_codename || s.project_name) + ')'
               ).join(', ')}
             </div>`;
         } else {
@@ -475,7 +1022,7 @@
           `).join('');
         }
 
-        // Projects (from activity endpoint's active_projects)
+        // Projects
         const projEl = document.getElementById('forge-projects');
         if (!data.active_projects || data.active_projects.length === 0) {
           projEl.innerHTML = '<span style="color:#8b949e">No active projects</span>';
@@ -485,10 +1032,10 @@
               <div class="project-name">${escapeHtml(p.codename || p.name)}</div>
               <div class="project-status">${escapeHtml(p.name)} - ${p.status || 'unknown'}</div>
               <div class="task-counts">
-                ${p.in_progress_count > 0 ? `<span class="count-item"><span class="dot dot-progress"></span>${p.in_progress_count} active</span>` : ''}
-                ${p.todo_count > 0 ? `<span class="count-item"><span class="dot dot-todo"></span>${p.todo_count} todo</span>` : ''}
-                ${p.blocked_count > 0 ? `<span class="count-item"><span class="dot dot-blocked"></span>${p.blocked_count} blocked</span>` : ''}
-                ${p.done_count > 0 ? `<span class="count-item"><span class="dot dot-done"></span>${p.done_count} done</span>` : ''}
+                ${p.in_progress_count > 0 ? '<span class="count-item"><span class="dot dot-progress"></span>' + p.in_progress_count + ' active</span>' : ''}
+                ${p.todo_count > 0 ? '<span class="count-item"><span class="dot dot-todo"></span>' + p.todo_count + ' todo</span>' : ''}
+                ${p.blocked_count > 0 ? '<span class="count-item"><span class="dot dot-blocked"></span>' + p.blocked_count + ' blocked</span>' : ''}
+                ${p.done_count > 0 ? '<span class="count-item"><span class="dot dot-done"></span>' + p.done_count + ' done</span>' : ''}
               </div>
             </div>
           `).join('');
@@ -499,12 +1046,73 @@
       }
     }
 
+    // =============================================
+    // SSE Real-time updates
+    // =============================================
+    const evtSource = new EventSource('/api/events');
+
+    evtSource.addEventListener('metrics', () => {
+      loadHosts();
+    });
+
+    evtSource.addEventListener('container', () => {
+      loadContainers();
+    });
+
+    evtSource.addEventListener('alert', () => {
+      loadAlerts();
+    });
+
+    evtSource.addEventListener('backup', () => {
+      loadBackups();
+    });
+
+    evtSource.addEventListener('forge-update', () => {
+      loadForgeTasks();
+      loadForgeActivity();
+    });
+
+    evtSource.onopen = () => {
+      document.getElementById('sse-status').textContent = 'SSE: connected';
+      document.getElementById('sse-status').style.color = '#3fb950';
+    };
+
+    evtSource.onerror = () => {
+      document.getElementById('sse-status').textContent = 'SSE: reconnecting...';
+      document.getElementById('sse-status').style.color = '#d29922';
+    };
+
+    // =============================================
+    // Tab switching
+    // =============================================
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+      });
+    });
+
+    // =============================================
     // Initial load
+    // =============================================
+    loadHosts();
+    loadContainers();
+    loadAlerts();
+    loadBackups();
     loadForgeTasks();
     loadForgeActivity();
 
-    // Refresh every 60 seconds
-    setInterval(() => { loadForgeTasks(); loadForgeActivity(); }, 60000);
+    // Refresh everything every 60 seconds (fallback if SSE misses)
+    setInterval(() => {
+      loadHosts();
+      loadContainers();
+      loadAlerts();
+      loadBackups();
+      loadForgeTasks();
+      loadForgeActivity();
+    }, 60000);
   </script>
 </body>
 </html>

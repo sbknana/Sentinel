@@ -4,6 +4,7 @@ const { execFileSync } = require('child_process');
 const { Client } = require('ssh2');
 const { getDb } = require('../db');
 const { broadcast } = require('../sse');
+const { evaluateMetricAlerts, evaluateHostDownAlert, resolveHostDownAlert } = require('../alerts/engine');
 
 // Shell script that gathers all system metrics.
 // Uses only POSIX-compatible constructs plus /proc (standard Linux).
@@ -222,8 +223,14 @@ async function collectAll() {
     if (metrics) {
       storeMetrics(host.id, host.name, metrics);
       console.log(`[collector] ${host.name}: CPU=${metrics.cpu_percent}% MEM=${metrics.memory_percent}% DISK=${metrics.disk_percent}% LOAD=${metrics.load_1m}`);
+      // Evaluate alert thresholds against collected metrics
+      evaluateMetricAlerts(host.id, host.name, metrics);
+      // Host is reachable — resolve any service_down alerts
+      resolveHostDownAlert(host.id);
     } else {
       console.error(`[collector] ${host.name}: collection failed`);
+      // Host unreachable — fire service_down alert if configured
+      evaluateHostDownAlert(host.id, host.name);
     }
   });
 

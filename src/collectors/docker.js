@@ -2,6 +2,7 @@
 const { getDb } = require('../db');
 const { execOnHost } = require('../ssh');
 const { broadcast } = require('../sse');
+const { healCrashedContainers } = require('../alerts/healing');
 
 // Commands from CLAUDE.md spec
 const DOCKER_PS_CMD = "docker ps -a --format '{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}'";
@@ -50,10 +51,23 @@ async function collectDocker(host) {
     }
   }
 
+  // Carry forward auto_restart flag from the previous snapshot for each container
+  const prevFlag = db.prepare(`
+    SELECT auto_restart FROM containers
+    WHERE host_id = ? AND name = ?
+    ORDER BY collected_at DESC
+    LIMIT 1
+  `);
+
+  for (const container of containers) {
+    const prev = prevFlag.get(host.id, container.name);
+    container.auto_restart = prev ? prev.auto_restart : 0;
+  }
+
   // Store in database
   const insert = db.prepare(`
-    INSERT INTO containers (host_id, collected_at, container_id, name, image, status, uptime, cpu_percent, memory_mb)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO containers (host_id, collected_at, container_id, name, image, status, uptime, cpu_percent, memory_mb, auto_restart)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   const insertMany = db.transaction((rows) => {
@@ -67,7 +81,8 @@ async function collectDocker(host) {
         c.status,
         c.uptime,
         c.cpu_percent,
-        c.memory_mb
+        c.memory_mb,
+        c.auto_restart
       );
     }
   });
@@ -280,6 +295,7 @@ async function collectDockerAll() {
     hosts.map(async (host) => {
       const containers = await collectDocker(host);
       checkContainerAlerts(host, containers);
+      await healCrashedContainers(host, containers);
       return { host: host.name, count: containers.length };
     })
   );
