@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CONTRIBUTING - sentinel</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      background: #0d1117; color: #c9d1d9; display: flex; min-height: 100vh;
+    }
+    .sidebar {
+      width: 260px; background: #161b22; border-right: 1px solid #30363d;
+      padding: 1rem 0; position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto;
+    }
+    .sidebar-header {
+      padding: 1rem 1.25rem; font-size: 1.1rem; font-weight: 700;
+      border-bottom: 1px solid #30363d; margin-bottom: 0.5rem;
+      color: #58a6ff;
+    }
+    .nav-item {
+      display: block; padding: 0.5rem 1.25rem; color: #c9d1d9;
+      text-decoration: none; font-size: 0.9rem;
+      border-left: 3px solid transparent; transition: all 0.15s;
+    }
+    .nav-item:hover { background: #1f6feb33; }
+    .nav-item.active {
+      background: #1f6feb33; border-left-color: #58a6ff; font-weight: 600;
+    }
+    .content {
+      margin-left: 260px; padding: 2rem 3rem; max-width: 900px; width: 100%;
+    }
+    h1 { font-size: 2rem; margin: 0.5em 0; border-bottom: 1px solid #30363d; padding-bottom: 0.3em; }
+    h2 { font-size: 1.5rem; margin: 1.5em 0 0.5em; border-bottom: 1px solid #30363d; padding-bottom: 0.2em; }
+    h3 { font-size: 1.25rem; margin: 1.2em 0 0.4em; }
+    h4 { font-size: 1.1rem; margin: 1em 0 0.3em; }
+    p { margin: 0.6em 0; line-height: 1.6; }
+    a { color: #58a6ff; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code {
+      background: #1c2128; padding: 0.2em 0.4em; border-radius: 4px;
+      font-family: "SFMono-Regular", Consolas, monospace; font-size: 0.85em;
+    }
+    pre {
+      background: #1c2128; padding: 1em; border-radius: 8px;
+      overflow-x: auto; margin: 1em 0; border: 1px solid #30363d;
+    }
+    pre code { background: none; padding: 0; }
+    table {
+      border-collapse: collapse; width: 100%; margin: 1em 0;
+    }
+    td, th {
+      border: 1px solid #30363d; padding: 0.5em 0.75em; text-align: left;
+    }
+    tr:nth-child(even) { background: #1c2128; }
+    ul { padding-left: 1.5em; margin: 0.5em 0; }
+    li { margin: 0.3em 0; line-height: 1.5; }
+    hr { border: none; border-top: 1px solid #30363d; margin: 2em 0; }
+    img { border: 1px solid #30363d; }
+    .mermaid { margin: 1.5em 0; }
+    .footer {
+      margin-top: 4em; padding-top: 1em; border-top: 1px solid #30363d;
+      font-size: 0.8em; opacity: 0.6;
+    }
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .content { margin-left: 0; padding: 1rem; }
+    }
+  </style>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "dark" });
+  </script>
+</head>
+<body>
+  <nav class="sidebar">
+    <div class="sidebar-header">sentinel</div>
+    <a href="api.html" class="nav-item">API</a>
+          <a href="architecture.html" class="nav-item">ARCHITECTURE</a>
+          <a href="contributing.html" class="nav-item active">CONTRIBUTING</a>
+          <a href="deployment.html" class="nav-item">DEPLOYMENT</a>
+          <a href="readme.html" class="nav-item">README</a>
+          <a href="diagrams.html" class="nav-item">DIAGRAMS</a>
+  </nav>
+  <main class="content">
+    <h1>Contributing to Sentinel</h1>
+
+<h2>Table of Contents</h2>
+
+<ul><li><a href="#contributing-to-sentinel">Contributing to Sentinel</a></li>
+</ul>  - <a href="#development-setup">Development Setup</a>
+    - <a href="#prerequisites">Prerequisites</a>
+    - <a href="#getting-started">Getting Started</a>
+  - <a href="#code-style">Code Style</a>
+    - <a href="#javascript-conventions">JavaScript Conventions</a>
+    - <a href="#expressjs-patterns">Express.js Patterns</a>
+    - <a href="#file-organization">File Organization</a>
+    - <a href="#database">Database</a>
+  - <a href="#making-changes">Making Changes</a>
+    - <a href="#branch-naming">Branch Naming</a>
+    - <a href="#commit-messages">Commit Messages</a>
+    - <a href="#development-workflow">Development Workflow</a>
+  - <a href="#testing">Testing</a>
+    - <a href="#manual-testing">Manual Testing</a>
+    - <a href="#what-to-test">What to Test</a>
+    - <a href="#future-automated-testing">Future: Automated Testing</a>
+  - <a href="#pull-request-process">Pull Request Process</a>
+    - <a href="#before-submitting">Before Submitting</a>
+    - <a href="#pr-template">PR Template</a>
+  - <a href="#description">Description</a>
+  - <a href="#type-of-change">Type of Change</a>
+  - <a href="#testing">Testing</a>
+  - <a href="#related-issues">Related Issues</a>
+  - <a href="#screenshots-if-applicable">Screenshots (if applicable)</a>
+    - <a href="#review-expectations">Review Expectations</a>
+    - <a href="#merging">Merging</a>
+  - <a href="#issue-reporting">Issue Reporting</a>
+    - <a href="#bug-reports">Bug Reports</a>
+    - <a href="#feature-requests">Feature Requests</a>
+    - <a href="#security-issues">Security Issues</a>
+  - <a href="#code-of-conduct">Code of Conduct</a>
+    - <a href="#our-standards">Our Standards</a>
+    - <a href="#unacceptable-behavior">Unacceptable Behavior</a>
+    - <a href="#enforcement">Enforcement</a>
+  - <a href="#questions">Questions?</a>
+  - <a href="#related-documentation">Related Documentation</a>
+
+<p>Welcome to Sentinel! We're glad you're interested in contributing to our infrastructure monitoring platform. This project helps keep TheForge ecosystem healthy and visible, and your contributions make it even better.</p>
+
+<h2>Development Setup</h2>
+
+<h3>Prerequisites</h3>
+
+<ul><li>Node.js (v18 or higher recommended)</li>
+<li>SSH access to monitored hosts (for testing monitoring features)</li>
+<li>Basic understanding of Docker and system monitoring concepts</li>
+</ul>
+<h3>Getting Started</h3>
+
+<p>1. <strong>Clone the repository</strong></p>
+   <pre><code class="language-bash">   git clone &lt;repository-url&gt;
+   cd sentinel
+   </code></pre>
+
+<p>2. <strong>Install dependencies</strong></p>
+   <pre><code class="language-bash">   npm install
+   </code></pre>
+
+<p>3. <strong>Set up configuration</strong></p>
+   - Review <code>src/config/</code> for configuration files
+   - Ensure you have proper SSH keys for host access
+   - Configure database path in <code>src/db/</code> if needed
+
+<p>4. <strong>Start development server</strong></p>
+   <pre><code class="language-bash">   npm run dev
+   </code></pre>
+   This uses Node's <code>--watch</code> flag for automatic reloading on file changes.
+
+<p>5. <strong>Verify the setup</strong></p>
+   - Server should start on port 3000
+   - Visit <code>http://localhost:3000/health</code> to verify
+   - Check <code>http://localhost:3000/api/status</code> for monitoring status
+
+<h2>Code Style</h2>
+
+<h3>JavaScript Conventions</h3>
+
+<ul><li><strong>ES6+ syntax</strong>: Use modern JavaScript features (arrow functions, async/await, destructuring)</li>
+<li><strong>Semicolons</strong>: Use semicolons consistently</li>
+<li><strong>Naming</strong>: </li>
+</ul>  - <code>camelCase</code> for variables and functions
+  - <code>PascalCase</code> for classes
+  - <code>UPPER_CASE</code> for constants
+<ul><li><strong>Indentation</strong>: 2 spaces (standard for Express projects)</li>
+<li><strong>Quotes</strong>: Single quotes for strings (except when avoiding escaping)</li>
+</ul>
+<h3>Express.js Patterns</h3>
+
+<ul><li>Use Express Router for route organization</li>
+<li>Keep route handlers thin; extract business logic to services</li>
+<li>Follow RESTful conventions for API endpoints</li>
+<li>Use middleware for cross-cutting concerns (auth, logging, error handling)</li>
+</ul>
+<h3>File Organization</h3>
+
+<pre><code class="language-text">src/
+<p>├── routes/          # Express route handlers</p>
+<p>├── services/        # Business logic and external integrations</p>
+<p>├── db/             # Database and persistence</p>
+<p>├── config/         # Configuration management</p>
+<p>└── server.js       # Application entry point</p>
+</code></pre>
+
+<h3>Database</h3>
+
+<ul><li>Uses <code>better-sqlite3</code> for persistence</li>
+<li>Keep queries in service layer, not routes</li>
+<li>Use prepared statements for parameterized queries</li>
+<li>Consider migrations for schema changes</li>
+</ul>
+<h2>Making Changes</h2>
+
+<h3>Branch Naming</h3>
+
+<ul><li><code>feature/</code> - New features (e.g., <code>feature/add-network-monitoring</code>)</li>
+<li><code>fix/</code> - Bug fixes (e.g., <code>fix/container-restart-timeout</code>)</li>
+<li><code>refactor/</code> - Code improvements without behavior changes</li>
+<li><code>docs/</code> - Documentation updates</li>
+<li><code>chore/</code> - Maintenance tasks (dependencies, configs)</li>
+</ul>
+<h3>Commit Messages</h3>
+
+<p>Follow conventional commit format:</p>
+
+<pre><code class="language-text">&lt;type&gt;: &lt;short summary&gt;
+
+<p>[optional body]</p>
+
+<p>[optional footer]</p>
+</code></pre>
+
+<strong>Types:</strong>
+<ul><li><code>feat:</code> - New feature</li>
+<li><code>fix:</code> - Bug fix</li>
+<li><code>refactor:</code> - Code refactoring</li>
+<li><code>docs:</code> - Documentation changes</li>
+<li><code>chore:</code> - Maintenance tasks</li>
+<li><code>perf:</code> - Performance improvements</li>
+</ul>
+<strong>Examples:</strong>
+<pre><code class="language-text">feat: add CPU usage alerts for containers
+
+<p>fix: resolve SSH connection timeout on slow hosts</p>
+
+<p>refactor: extract backup checking logic to service</p>
+
+<p>docs: update API endpoint documentation</p>
+</code></pre>
+
+<h3>Development Workflow</h3>
+
+<p>1. Create a branch from <code>main</code></p>
+<p>2. Make your changes</p>
+<p>3. Test manually using <code>npm run dev</code></p>
+<p>4. Commit with clear messages</p>
+<p>5. Push and create a Pull Request</p>
+
+<h2>Testing</h2>
+
+<h3>Manual Testing</h3>
+
+<p>Currently, Sentinel relies on manual testing given its infrastructure monitoring nature:</p>
+
+<p>1. <strong>Start the development server</strong></p>
+   <pre><code class="language-bash">   npm run dev
+   </code></pre>
+
+<p>2. <strong>Test core endpoints</strong></p>
+   - Health check: <code>GET /health</code>
+   - Status monitoring: <code>GET /api/status</code>
+   - Container monitoring: <code>GET /api/containers</code>
+   - Alerts: <code>GET /api/alerts</code>
+
+<p>3. <strong>Test monitoring features</strong></p>
+   - Verify SSH connections to hosts work
+   - Check Docker container detection
+   - Validate alert triggering conditions
+   - Test backup status checks
+
+<p>4. <strong>Test edge cases</strong></p>
+   - Unavailable hosts
+   - Failed SSH connections
+   - Invalid container states
+   - Database connection issues
+
+<h3>What to Test</h3>
+
+<p>When contributing, ensure your changes work with:</p>
+
+<ul><li><strong>Multiple host configurations</strong> - Test with various VM setups</li>
+<li><strong>Container states</strong> - Running, stopped, restarting containers</li>
+<li><strong>Network conditions</strong> - Slow connections, timeouts, SSH failures</li>
+<li><strong>Error handling</strong> - Graceful degradation when services are unavailable</li>
+<li><strong>Data persistence</strong> - Database operations work correctly</li>
+</ul>
+<h3>Future: Automated Testing</h3>
+
+<p>We welcome contributions to add automated testing:</p>
+<ul><li>Unit tests for service layer logic</li>
+<li>Integration tests for API endpoints</li>
+<li>Mock SSH connections for testing monitoring</li>
+<li>Database fixture management</li>
+</ul>
+<h2>Pull Request Process</h2>
+
+<h3>Before Submitting</h3>
+
+<ul><li>[ ] Code follows the style guidelines above</li>
+<li>[ ] Manual testing completed successfully</li>
+<li>[ ] No console.log() statements left in code (use proper logging)</li>
+<li>[ ] Comments added for complex logic</li>
+<li>[ ] Related documentation updated</li>
+</ul>
+<h3>PR Template</h3>
+
+<pre><code class="language-markdown">## Description
+<p>Brief description of what this PR does</p>
+
+<h2>Type of Change</h2>
+<ul><li>[ ] Bug fix</li>
+<li>[ ] New feature</li>
+<li>[ ] Refactoring</li>
+<li>[ ] Documentation</li>
+<li>[ ] Chore</li>
+</ul>
+<h2>Testing</h2>
+<p>How was this tested?</p>
+
+<h2>Related Issues</h2>
+<p>Fixes #(issue number)</p>
+
+<h2>Screenshots (if applicable)</h2>
+</code></pre>
+
+<h3>Review Expectations</h3>
+
+<ul><li>PRs require at least one review before merging</li>
+<li>Address review comments promptly</li>
+<li>Keep PRs focused and reasonably sized</li>
+<li>Be responsive to feedback and questions</li>
+<li>CI checks must pass (when implemented)</li>
+</ul>
+<h3>Merging</h3>
+
+<ul><li>Squash commits for feature branches</li>
+<li>Use meaningful merge commit messages</li>
+<li>Delete branch after merging</li>
+<li>Update related issues and documentation</li>
+</ul>
+<h2>Issue Reporting</h2>
+
+<h3>Bug Reports</h3>
+
+<p>When filing a bug, include:</p>
+
+<p>1. <strong>Description</strong> - Clear summary of the issue</p>
+<p>2. <strong>Environment</strong> - OS, Node version, deployment context</p>
+<p>3. <strong>Steps to reproduce</strong> - Detailed reproduction steps</p>
+<p>4. <strong>Expected behavior</strong> - What should happen</p>
+<p>5. <strong>Actual behavior</strong> - What actually happens</p>
+<p>6. <strong>Logs</strong> - Relevant error messages or logs</p>
+<p>7. <strong>Screenshots</strong> - If applicable (especially for UI issues)</p>
+
+<strong>Template:</strong>
+<pre><code class="language-markdown"><strong>Environment:</strong>
+<ul><li>OS: Ubuntu 22.04</li>
+<li>Node: v18.x</li>
+<li>Sentinel version: [commit hash or version]</li>
+</ul>
+<strong>Description:</strong>
+<p>[Clear description]</p>
+
+<strong>Steps to Reproduce:</strong>
+<p>1. </p>
+<p>2. </p>
+<p>3. </p>
+
+<strong>Expected:</strong> 
+<strong>Actual:</strong> 
+
+<strong>Logs:</strong>
+</code></pre>
+
+<h3>Feature Requests</h3>
+
+<p>Include:</p>
+
+<p>1. <strong>Use case</strong> - What problem does this solve?</p>
+<p>2. <strong>Proposed solution</strong> - How might it work?</p>
+<p>3. <strong>Alternatives considered</strong> - Other approaches you've thought about</p>
+<p>4. <strong>Additional context</strong> - Any relevant background</p>
+
+<h3>Security Issues</h3>
+
+<strong>Do not file public issues for security vulnerabilities.</strong> Contact the maintainers directly with:
+<ul><li>Detailed description of the vulnerability</li>
+<li>Steps to reproduce</li>
+<li>Potential impact assessment</li>
+<li>Suggested fixes (if any)</li>
+</ul>
+<h2>Code of Conduct</h2>
+
+<h3>Our Standards</h3>
+
+<ul><li><strong>Be respectful</strong> - Treat all contributors with respect and kindness</li>
+<li><strong>Be collaborative</strong> - Work together, help each other learn</li>
+<li><strong>Be constructive</strong> - Provide helpful feedback, not just criticism</li>
+<li><strong>Be patient</strong> - Everyone has different experience levels</li>
+<li><strong>Be inclusive</strong> - Welcome contributors from all backgrounds</li>
+</ul>
+<h3>Unacceptable Behavior</h3>
+
+<ul><li>Harassment, discrimination, or exclusionary behavior</li>
+<li>Trolling, insulting comments, or personal attacks</li>
+<li>Publishing others' private information</li>
+<li>Other conduct inappropriate for a professional setting</li>
+</ul>
+<h3>Enforcement</h3>
+
+<p>Violations may result in:</p>
+<ul><li>Warning from maintainers</li>
+<li>Temporary ban from the project</li>
+<li>Permanent ban for repeated or serious violations</li>
+</ul>
+<p>Report issues to project maintainers privately.</p>
+
+<hr>
+
+<h2>Questions?</h2>
+
+<ul><li>Check existing issues and documentation first</li>
+<li>Review <code>CLAUDE.md</code> for project context</li>
+<li>Ask questions in issues or discussions</li>
+<li>Reach out to maintainers for guidance</li>
+</ul>
+<p>Thank you for contributing to Sentinel! Your work helps keep TheForge infrastructure monitored, healthy, and visible. 🚀</p>
+<hr>
+
+<h2>Related Documentation</h2>
+
+<ul><li><a href="README.md">Readme</a></li>
+<li><a href="ARCHITECTURE.md">Architecture</a></li>
+<li><a href="API.md">Api</a></li>
+<li><a href="DEPLOYMENT.md">Deployment</a></li>
+</ul>
+    <div class="footer">
+      Generated by Athena &mdash; &copy; 2026 TheForge, LLC
+    </div>
+  </main>
+</body>
+</html>

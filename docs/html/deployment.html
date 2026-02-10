@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DEPLOYMENT - sentinel</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      background: #0d1117; color: #c9d1d9; display: flex; min-height: 100vh;
+    }
+    .sidebar {
+      width: 260px; background: #161b22; border-right: 1px solid #30363d;
+      padding: 1rem 0; position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto;
+    }
+    .sidebar-header {
+      padding: 1rem 1.25rem; font-size: 1.1rem; font-weight: 700;
+      border-bottom: 1px solid #30363d; margin-bottom: 0.5rem;
+      color: #58a6ff;
+    }
+    .nav-item {
+      display: block; padding: 0.5rem 1.25rem; color: #c9d1d9;
+      text-decoration: none; font-size: 0.9rem;
+      border-left: 3px solid transparent; transition: all 0.15s;
+    }
+    .nav-item:hover { background: #1f6feb33; }
+    .nav-item.active {
+      background: #1f6feb33; border-left-color: #58a6ff; font-weight: 600;
+    }
+    .content {
+      margin-left: 260px; padding: 2rem 3rem; max-width: 900px; width: 100%;
+    }
+    h1 { font-size: 2rem; margin: 0.5em 0; border-bottom: 1px solid #30363d; padding-bottom: 0.3em; }
+    h2 { font-size: 1.5rem; margin: 1.5em 0 0.5em; border-bottom: 1px solid #30363d; padding-bottom: 0.2em; }
+    h3 { font-size: 1.25rem; margin: 1.2em 0 0.4em; }
+    h4 { font-size: 1.1rem; margin: 1em 0 0.3em; }
+    p { margin: 0.6em 0; line-height: 1.6; }
+    a { color: #58a6ff; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code {
+      background: #1c2128; padding: 0.2em 0.4em; border-radius: 4px;
+      font-family: "SFMono-Regular", Consolas, monospace; font-size: 0.85em;
+    }
+    pre {
+      background: #1c2128; padding: 1em; border-radius: 8px;
+      overflow-x: auto; margin: 1em 0; border: 1px solid #30363d;
+    }
+    pre code { background: none; padding: 0; }
+    table {
+      border-collapse: collapse; width: 100%; margin: 1em 0;
+    }
+    td, th {
+      border: 1px solid #30363d; padding: 0.5em 0.75em; text-align: left;
+    }
+    tr:nth-child(even) { background: #1c2128; }
+    ul { padding-left: 1.5em; margin: 0.5em 0; }
+    li { margin: 0.3em 0; line-height: 1.5; }
+    hr { border: none; border-top: 1px solid #30363d; margin: 2em 0; }
+    img { border: 1px solid #30363d; }
+    .mermaid { margin: 1.5em 0; }
+    .footer {
+      margin-top: 4em; padding-top: 1em; border-top: 1px solid #30363d;
+      font-size: 0.8em; opacity: 0.6;
+    }
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .content { margin-left: 0; padding: 1rem; }
+    }
+  </style>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "dark" });
+  </script>
+</head>
+<body>
+  <nav class="sidebar">
+    <div class="sidebar-header">sentinel</div>
+    <a href="api.html" class="nav-item">API</a>
+          <a href="architecture.html" class="nav-item">ARCHITECTURE</a>
+          <a href="contributing.html" class="nav-item">CONTRIBUTING</a>
+          <a href="deployment.html" class="nav-item active">DEPLOYMENT</a>
+          <a href="readme.html" class="nav-item">README</a>
+          <a href="diagrams.html" class="nav-item">DIAGRAMS</a>
+  </nav>
+  <main class="content">
+    <h1>DEPLOYMENT.md — Sentinel</h1>
+
+<h2>Table of Contents</h2>
+
+<ul><li><a href="#deploymentmd-sentinel">DEPLOYMENT.md — Sentinel</a></li>
+</ul>  - <a href="#prerequisites">Prerequisites</a>
+    - <a href="#required-software">Required Software</a>
+    - <a href="#required-accounts-access">Required Accounts & Access</a>
+    - <a href="#system-dependencies">System Dependencies</a>
+<ul><li><a href="#ubuntudebian">Ubuntu/Debian</a></li>
+<li><a href="#macos">macOS</a></li>
+</ul>  - <a href="#environment-variables">Environment Variables</a>
+    - <a href="#creating-env-file">Creating .env File</a>
+  - <a href="#local-development">Local Development</a>
+    - <a href="#step-1-clone-and-install">Step 1: Clone and Install</a>
+    - <a href="#step-2-create-data-directory">Step 2: Create Data Directory</a>
+    - <a href="#step-3-configure-ssh-access">Step 3: Configure SSH Access</a>
+<ul><li><a href="#ensure-ssh-key-has-correct-permissions">Ensure SSH key has correct permissions</a></li>
+<li><a href="#test-ssh-access-to-a-monitored-vm">Test SSH access to a monitored VM</a></li>
+</ul>    - <a href="#step-4-initialize-database">Step 4: Initialize Database</a>
+    - <a href="#step-5-start-development-server">Step 5: Start Development Server</a>
+<ul><li><a href="#with-auto-reload-node-18-required">With auto-reload (Node 18+ required)</a></li>
+<li><a href="#or-standard-start">Or standard start</a></li>
+</ul>    - <a href="#step-6-verify-health">Step 6: Verify Health</a>
+<ul><li><a href="#expected-statusokuptimeseconds">Expected: {"status":"ok","uptime":<seconds>}</a></li>
+</ul>    - <a href="#development-workflow">Development Workflow</a>
+<ul><li><a href="#run-with-custom-port">Run with custom port</a></li>
+<li><a href="#run-with-debug-logging">Run with debug logging</a></li>
+<li><a href="#monitor-logs-in-real-time">Monitor logs in real-time</a></li>
+</ul>  - <a href="#build">Build</a>
+    - <a href="#production-dependencies-only">Production Dependencies Only</a>
+    - <a href="#verification">Verification</a>
+<ul><li><a href="#verify-all-dependencies-are-installed">Verify all dependencies are installed</a></li>
+<li><a href="#check-for-vulnerabilities">Check for vulnerabilities</a></li>
+<li><a href="#test-the-application-starts">Test the application starts</a></li>
+</ul>    - <a href="#output-structure">Output Structure</a>
+  - <a href="#deployment-options">Deployment Options</a>
+    - <a href="#recommended-bare-metal-vm-deployment-primary">Recommended: Bare Metal / VM Deployment (Primary)</a>
+<ul><li><a href="#1-create-application-user">1. Create application user</a></li>
+<li><a href="#2-deploy-application">2. Deploy application</a></li>
+<li><a href="#3-install-dependencies-as-sentinel-user">3. Install dependencies as sentinel user</a></li>
+<li><a href="#4-create-data-directory">4. Create data directory</a></li>
+<li><a href="#enable-and-start-service">Enable and start service</a></li>
+<li><a href="#check-status">Check status</a></li>
+<li><a href="#view-logs">View logs</a></li>
+</ul>    - <a href="#alternative-docker-deployment">Alternative: Docker Deployment</a>
+<ul><li><a href="#build-image">Build image</a></li>
+<li><a href="#run-container">Run container</a></li>
+</ul>    - <a href="#alternative-railway-render-not-recommended">Alternative: Railway / Render (Not Recommended)</a>
+    - <a href="#alternative-pm2-process-manager">Alternative: PM2 Process Manager</a>
+<ul><li><a href="#install-pm2-globally">Install PM2 globally</a></li>
+<li><a href="#start-application">Start application</a></li>
+<li><a href="#save-pm2-configuration">Save PM2 configuration</a></li>
+<li><a href="#setup-pm2-to-start-on-boot">Setup PM2 to start on boot</a></li>
+<li><a href="#run-the-command-it-outputs">Run the command it outputs</a></li>
+<li><a href="#monitor">Monitor</a></li>
+</ul>  - <a href="#docker">Docker</a>
+    - <a href="#dockerfile">Dockerfile</a>
+<ul><li><a href="#install-build-dependencies-for-better-sqlite3">Install build dependencies for better-sqlite3</a></li>
+<li><a href="#create-app-directory">Create app directory</a></li>
+<li><a href="#copy-package-files">Copy package files</a></li>
+<li><a href="#install-dependencies">Install dependencies</a></li>
+<li><a href="#copy-application-source">Copy application source</a></li>
+<li><a href="#create-data-directory">Create data directory</a></li>
+<li><a href="#expose-port">Expose port</a></li>
+<li><a href="#set-environment-variables">Set environment variables</a></li>
+<li><a href="#health-check">Health check</a></li>
+<li><a href="#run-as-non-root-user">Run as non-root user</a></li>
+</ul>    - <a href="#dockerignore">.dockerignore</a>
+    - <a href="#docker-compose-optional">Docker Compose (Optional)</a>
+<ul><li><a href="#start-with-docker-compose">Start with docker-compose</a></li>
+<li><a href="#view-logs">View logs</a></li>
+<li><a href="#stop">Stop</a></li>
+</ul>  - <a href="#cicd">CI/CD</a>
+    - <a href="#github-actions-workflow">GitHub Actions Workflow</a>
+    - <a href="#required-github-secrets">Required GitHub Secrets</a>
+    - <a href="#manual-deployment-script">Manual Deployment Script</a>
+<ul><li><a href="#create-deployment-package">Create deployment package</a></li>
+<li><a href="#upload-to-server">Upload to server</a></li>
+<li><a href="#deploy-on-server">Deploy on server</a></li>
+<li><a href="#cleanup">Cleanup</a></li>
+</ul>  - <a href="#monitoring">Monitoring</a>
+    - <a href="#application-health-monitoring">Application Health Monitoring</a>
+<ul><li><a href="#simple-health-check">Simple health check</a></li>
+<li><a href="#detailed-status">Detailed status</a></li>
+</ul>    - <a href="#system-resource-monitoring">System Resource Monitoring</a>
+<ul><li><a href="#view-real-time-logs">View real-time logs</a></li>
+<li><a href="#view-logs-from-last-hour">View logs from last hour</a></li>
+<li><a href="#view-errors-only">View errors only</a></li>
+<li><a href="#export-logs">Export logs</a></li>
+<li><a href="#real-time-logs">Real-time logs</a></li>
+<li><a href="#monitor-cpumemory">Monitor CPU/Memory</a></li>
+<li><a href="#view-detailed-info">View detailed info</a></li>
+</ul>    - <a href="#database-monitoring">Database Monitoring</a>
+<ul><li><a href="#check-database-size">Check database size</a></li>
+<li><a href="#sqlite-statistics">SQLite statistics</a></li>
+<li><a href="#check-for-database-locks">Check for database locks</a></li>
+</ul>    - <a href="#performance-monitoring">Performance Monitoring</a>
+    - <a href="#alert-configuration">Alert Configuration</a>
+    - <a href="#log-rotation">Log Rotation</a>
+    - <a href="#backup-strategy">Backup Strategy</a>
+<ul><li><a href="#daily-database-backup-script">Daily database backup script</a></li>
+<li><a href="#backup-with-timestamp">Backup with timestamp</a></li>
+<li><a href="#keep-only-last-7-days">Keep only last 7 days</a></li>
+</ul>    - <a href="#recommended-monitoring-stack">Recommended Monitoring Stack</a>
+<ul><li><a href="#install-node_exporter-for-system-metrics">Install node_exporter for system metrics</a></li>
+<li><a href="#create-systemd-service-for-node_exporter">Create systemd service for node_exporter</a></li>
+</ul>  - <a href="#related-documentation">Related Documentation</a>
+
+<h2>Prerequisites</h2>
+
+<h3>Required Software</h3>
+<ul><li><strong>Node.js</strong>: v18.x or higher (v20.x recommended)</li>
+<li><strong>npm</strong>: v9.x or higher</li>
+<li><strong>SQLite3</strong>: System libraries for better-sqlite3 compilation</li>
+<li><strong>SSH Access</strong>: Required for VM monitoring functionality</li>
+<li><strong>Operating System</strong>: Linux (Ubuntu recommended) or macOS</li>
+</ul>
+<h3>Required Accounts & Access</h3>
+<ul><li>SSH keys configured for all VMs being monitored</li>
+<li>Access to TheForge infrastructure network</li>
+<li>Port 3000 available on host machine (Claudinator)</li>
+</ul>
+<h3>System Dependencies</h3>
+<pre><code class="language-bash"># Ubuntu/Debian
+<p>sudo apt-get update</p>
+<p>sudo apt-get install -y build-essential python3 sqlite3 libsqlite3-dev</p>
+
+<h1>macOS</h1>
+<p>brew install sqlite3</p>
+</code></pre>
+
+<h2>Environment Variables</h2>
+
+<p>The following environment variables should be configured:</p>
+
+<table><tr><td>Variable</td><td>Description</td><td>Required</td><td>Default</td><td>Example</td></tr>
+<tr><td>----------</td><td>-------------</td><td>----------</td><td>---------</td><td>---------</td></tr>
+<tr><td><code>PORT</code></td><td>Server listening port</td><td>No</td><td>3000</td><td><code>3000</code></td></tr>
+<tr><td><code>NODE_ENV</code></td><td>Environment mode</td><td>No</td><td>development</td><td><code>production</code></td></tr>
+<tr><td><code>DB_PATH</code></td><td>SQLite database file path</td><td>No</td><td><code>./data/sentinel.db</code></td><td><code>/var/sentinel/sentinel.db</code></td></tr>
+<tr><td><code>LOG_LEVEL</code></td><td>Application log level</td><td>No</td><td>info</td><td><code>debug</code>, <code>info</code>, <code>warn</code>, <code>error</code></td></tr>
+<tr><td><code>SSH_KEY_PATH</code></td><td>Path to SSH private key for VM access</td><td>Yes</td><td>-</td><td><code>/home/user/.ssh/id_rsa</code></td></tr>
+<tr><td><code>ALERT_CHECK_INTERVAL</code></td><td>Cron schedule for alert checks</td><td>No</td><td><code><em>/5 </em> <em> </em> <em></code></td><td><code></em>/2 <em> </em> <em> </em></code></td></tr>
+<tr><td><code>BACKUP_CHECK_INTERVAL</code></td><td>Cron schedule for backup checks</td><td>No</td><td><code>0 <em>/6 </em> <em> </em></code></td><td><code>0 <em>/4 </em> <em> </em></code></td></tr>
+<tr><td><code>METRICS_RETENTION_DAYS</code></td><td>Days to retain metrics history</td><td>No</td><td>30</td><td><code>90</code></td></tr>
+</table>
+<h3>Creating .env File</h3>
+<pre><code class="language-bash">cat &gt; .env &lt;&lt; EOF
+<p>PORT=3000</p>
+<p>NODE_ENV=production</p>
+<p>DB_PATH=/var/sentinel/sentinel.db</p>
+<p>SSH_KEY_PATH=/home/forge/.ssh/id_rsa</p>
+<p>LOG_LEVEL=info</p>
+<p>ALERT_CHECK_INTERVAL=<em>/5 </em> <em> </em> *</p>
+<p>BACKUP_CHECK_INTERVAL=0 <em>/6 </em> <em> </em></p>
+<p>METRICS_RETENTION_DAYS=30</p>
+<p>EOF</p>
+</code></pre>
+
+<h2>Local Development</h2>
+
+<h3>Step 1: Clone and Install</h3>
+<pre><code class="language-bash">git clone &lt;repository-url&gt; sentinel
+<p>cd sentinel</p>
+<p>npm install</p>
+</code></pre>
+
+<h3>Step 2: Create Data Directory</h3>
+<pre><code class="language-bash">mkdir -p data
+<p>chmod 755 data</p>
+</code></pre>
+
+<h3>Step 3: Configure SSH Access</h3>
+<pre><code class="language-bash"># Ensure SSH key has correct permissions
+<p>chmod 600 ~/.ssh/id_rsa</p>
+
+<h1>Test SSH access to a monitored VM</h1>
+<p>ssh -i ~/.ssh/id_rsa user@monitored-vm.local</p>
+</code></pre>
+
+<h3>Step 4: Initialize Database</h3>
+<p>The database will auto-initialize on first run, but you can verify:</p>
+<pre><code class="language-bash">sqlite3 data/sentinel.db ".tables"
+</code></pre>
+
+<h3>Step 5: Start Development Server</h3>
+<pre><code class="language-bash"># With auto-reload (Node 18+ required)
+<p>npm run dev</p>
+
+<h1>Or standard start</h1>
+<p>npm start</p>
+</code></pre>
+
+<p>The server will start on <code>http://localhost:3000</code></p>
+
+<h3>Step 6: Verify Health</h3>
+<pre><code class="language-bash">curl http://localhost:3000/health
+<h1>Expected: {"status":"ok","uptime":&lt;seconds&gt;}</h1>
+</code></pre>
+
+<h3>Development Workflow</h3>
+<pre><code class="language-bash"># Run with custom port
+<p>PORT=3001 npm run dev</p>
+
+<h1>Run with debug logging</h1>
+<p>LOG_LEVEL=debug npm run dev</p>
+
+<h1>Monitor logs in real-time</h1>
+<p>tail -f logs/sentinel.log  # if logging to file</p>
+</code></pre>
+
+<h2>Build</h2>
+
+<p>This is a Node.js Express application that does not require a build step.</p>
+
+<h3>Production Dependencies Only</h3>
+<pre><code class="language-bash">npm install --production
+</code></pre>
+
+<h3>Verification</h3>
+<pre><code class="language-bash"># Verify all dependencies are installed
+<p>npm list --depth=0</p>
+
+<h1>Check for vulnerabilities</h1>
+<p>npm audit</p>
+
+<h1>Test the application starts</h1>
+<p>node src/server.js</p>
+</code></pre>
+
+<h3>Output Structure</h3>
+<pre><code class="language-text">sentinel/
+<p>├── src/              # Application source code</p>
+<p>├── data/             # SQLite database (runtime generated)</p>
+<p>├── node_modules/     # Dependencies</p>
+<p>├── package.json      # Project manifest</p>
+<p>└── .env             # Environment configuration</p>
+</code></pre>
+
+<h2>Deployment Options</h2>
+
+<h3>Recommended: Bare Metal / VM Deployment (Primary)</h3>
+
+<strong>Best for:</strong> Infrastructure monitoring tools that need host-level access
+
+<p>This application is designed to run directly on <strong>Claudinator</strong> (Ubuntu host) to monitor TheForge infrastructure. Deploy as a systemd service for production reliability.</p>
+
+<h4>Setup Process:</h4>
+<pre><code class="language-bash"># 1. Create application user
+<p>sudo useradd -r -s /bin/bash -m -d /opt/sentinel sentinel</p>
+
+<h1>2. Deploy application</h1>
+<p>sudo mkdir -p /opt/sentinel</p>
+<p>sudo cp -r ./* /opt/sentinel/</p>
+<p>sudo chown -R sentinel:sentinel /opt/sentinel</p>
+
+<h1>3. Install dependencies as sentinel user</h1>
+<p>sudo -u sentinel bash -c 'cd /opt/sentinel &amp;&amp; npm install --production'</p>
+
+<h1>4. Create data directory</h1>
+<p>sudo mkdir -p /var/sentinel</p>
+<p>sudo chown sentinel:sentinel /var/sentinel</p>
+</code></pre>
+
+<h4>Systemd Service Configuration:</h4>
+<pre><code class="language-bash">sudo nano /etc/systemd/system/sentinel.service
+</code></pre>
+
+<pre><code class="language-ini">[Unit]
+<p>Description=Sentinel Infrastructure Monitor</p>
+<p>After=network.target</p>
+<p>Wants=network-online.target</p>
+
+<p>[Service]</p>
+<p>Type=simple</p>
+<p>User=sentinel</p>
+<p>Group=sentinel</p>
+<p>WorkingDirectory=/opt/sentinel</p>
+<p>Environment="NODE_ENV=production"</p>
+<p>Environment="PORT=3000"</p>
+<p>Environment="DB_PATH=/var/sentinel/sentinel.db"</p>
+<p>Environment="SSH_KEY_PATH=/home/sentinel/.ssh/id_rsa"</p>
+<p>ExecStart=/usr/bin/node /opt/sentinel/src/server.js</p>
+<p>Restart=always</p>
+<p>RestartSec=10</p>
+<p>StandardOutput=journal</p>
+<p>StandardError=journal</p>
+<p>SyslogIdentifier=sentinel</p>
+
+<p>[Install]</p>
+<p>WantedBy=multi-user.target</p>
+</code></pre>
+
+<pre><code class="language-bash"># Enable and start service
+<p>sudo systemctl daemon-reload</p>
+<p>sudo systemctl enable sentinel</p>
+<p>sudo systemctl start sentinel</p>
+
+<h1>Check status</h1>
+<p>sudo systemctl status sentinel</p>
+
+<h1>View logs</h1>
+<p>sudo journalctl -u sentinel -f</p>
+</code></pre>
+
+<h3>Alternative: Docker Deployment</h3>
+
+<strong>Best for:</strong> Containerized environments, development, or isolated deployments
+
+<pre><code class="language-bash"># Build image
+<p>docker build -t sentinel:latest .</p>
+
+<h1>Run container</h1>
+<p>docker run -d \</p>
+  --name sentinel \
+  -p 3000:3000 \
+  -v /var/sentinel:/data \
+  -v ~/.ssh:/root/.ssh:ro \
+  -e NODE_ENV=production \
+  -e DB_PATH=/data/sentinel.db \
+  -e SSH_KEY_PATH=/root/.ssh/id_rsa \
+  --restart unless-stopped \
+  sentinel:latest
+</code></pre>
+
+<h3>Alternative: Railway / Render (Not Recommended)</h3>
+
+<strong>Note:</strong> These platforms are not ideal for this application because:
+<ul><li>Requires SSH access to external VMs</li>
+<li>Needs persistent SQLite database storage</li>
+<li>Better suited for traditional VPS deployment</li>
+</ul>
+<p>If you must use Railway/Render, use PostgreSQL instead of SQLite and configure SSH keys via secrets.</p>
+
+<h3>Alternative: PM2 Process Manager</h3>
+
+<strong>Best for:</strong> Simpler deployment without systemd
+
+<pre><code class="language-bash"># Install PM2 globally
+<p>npm install -g pm2</p>
+
+<h1>Start application</h1>
+<p>cd /opt/sentinel</p>
+<p>pm2 start src/server.js --name sentinel</p>
+
+<h1>Save PM2 configuration</h1>
+<p>pm2 save</p>
+
+<h1>Setup PM2 to start on boot</h1>
+<p>pm2 startup</p>
+<h1>Run the command it outputs</h1>
+
+<h1>Monitor</h1>
+<p>pm2 monit</p>
+<p>pm2 logs sentinel</p>
+</code></pre>
+
+<h2>Docker</h2>
+
+<h3>Dockerfile</h3>
+
+<pre><code class="language-dockerfile">FROM node:20-alpine
+
+<h1>Install build dependencies for better-sqlite3</h1>
+<p>RUN apk add --no-cache \</p>
+    python3 \
+    make \
+    g++ \
+    sqlite \
+    openssh-client
+
+<h1>Create app directory</h1>
+<p>WORKDIR /app</p>
+
+<h1>Copy package files</h1>
+<p>COPY package*.json ./</p>
+
+<h1>Install dependencies</h1>
+<p>RUN npm ci --production</p>
+
+<h1>Copy application source</h1>
+<p>COPY src/ ./src/</p>
+
+<h1>Create data directory</h1>
+<p>RUN mkdir -p /data</p>
+
+<h1>Expose port</h1>
+<p>EXPOSE 3000</p>
+
+<h1>Set environment variables</h1>
+<p>ENV NODE_ENV=production \</p>
+    PORT=3000 \
+    DB_PATH=/data/sentinel.db
+
+<h1>Health check</h1>
+<p>HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \</p>
+  CMD node -e "require('http').get('http://localhost:3000/health', (r) =&gt; {process.exit(r.statusCode === 200 ? 0 : 1)})"
+
+<h1>Run as non-root user</h1>
+<p>USER node</p>
+
+<p>CMD ["node", "src/server.js"]</p>
+</code></pre>
+
+<h3>.dockerignore</h3>
+
+<pre><code class="language-text">node_modules
+<p>npm-debug.log</p>
+<p>.env</p>
+<p>.git</p>
+<p>.gitignore</p>
+<p>data/</p>
+<p>*.md</p>
+<p>.DS_Store</p>
+</code></pre>
+
+<h3>Docker Compose (Optional)</h3>
+
+<pre><code class="language-yaml">version: '3.8'
+
+<p>services:</p>
+  sentinel:
+    build: .
+    container_name: sentinel
+    ports:
+      - "3000:3000"
+    volumes:
+      - sentinel-data:/data
+      - ~/.ssh:/home/node/.ssh:ro
+    environment:
+      - NODE_ENV=production
+      - DB_PATH=/data/sentinel.db
+      - SSH_KEY_PATH=/home/node/.ssh/id_rsa
+      - LOG_LEVEL=info
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) =&gt; {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 40s
+
+<p>volumes:</p>
+  sentinel-data:
+    driver: local
+</code></pre>
+
+<pre><code class="language-bash"># Start with docker-compose
+<p>docker-compose up -d</p>
+
+<h1>View logs</h1>
+<p>docker-compose logs -f</p>
+
+<h1>Stop</h1>
+<p>docker-compose down</p>
+</code></pre>
+
+<h2>CI/CD</h2>
+
+<h3>GitHub Actions Workflow</h3>
+
+<p>Create <code>.github/workflows/deploy.yml</code>:</p>
+
+<pre><code class="language-yaml">name: Deploy Sentinel
+
+<p>on:</p>
+  push:
+    branches: [main, production]
+  workflow_dispatch:
+
+<p>jobs:</p>
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run security audit
+        run: npm audit --audit-level=high
+      
+      - name: Check for syntax errors
+        run: node --check src/server.js
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/production'
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Deploy to Claudinator
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            cd /opt/sentinel
+            git pull origin production
+            npm install --production
+            sudo systemctl restart sentinel
+            sleep 5
+            curl -f http://localhost:3000/health || exit 1
+
+  docker:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/sentinel:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/sentinel:${{ github.sha }}
+          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/sentinel:buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/sentinel:buildcache,mode=max
+</code></pre>
+
+<h3>Required GitHub Secrets</h3>
+
+<p>Configure these in your repository settings (Settings → Secrets → Actions):</p>
+
+<ul><li><code>DEPLOY_HOST</code>: Claudinator hostname/IP</li>
+<li><code>DEPLOY_USER</code>: SSH user (e.g., <code>sentinel</code>)</li>
+<li><code>DEPLOY_SSH_KEY</code>: Private SSH key for deployment</li>
+<li><code>DOCKERHUB_USERNAME</code>: Docker Hub username (if using Docker)</li>
+<li><code>DOCKERHUB_TOKEN</code>: Docker Hub access token (if using Docker)</li>
+</ul>
+<h3>Manual Deployment Script</h3>
+
+<p>Create <code>scripts/deploy.sh</code>:</p>
+
+<pre><code class="language-bash">#!/bin/bash
+<p>set -e</p>
+
+<p>REMOTE_USER="sentinel"</p>
+<p>REMOTE_HOST="claudinator.local"</p>
+<p>REMOTE_PATH="/opt/sentinel"</p>
+
+<p>echo "🚀 Deploying Sentinel to $REMOTE_HOST..."</p>
+
+<h1>Create deployment package</h1>
+<p>echo "📦 Creating deployment package..."</p>
+<p>tar --exclude='node_modules' \</p>
+    --exclude='.git' \
+    --exclude='data' \
+    --exclude='.env' \
+    -czf sentinel-deploy.tar.gz .
+
+<h1>Upload to server</h1>
+<p>echo "📤 Uploading to server..."</p>
+<p>scp sentinel-deploy.tar.gz $REMOTE_USER@$REMOTE_HOST:/tmp/</p>
+
+<h1>Deploy on server</h1>
+<p>echo "🔧 Installing on server..."</p>
+<p>ssh $REMOTE_USER@$REMOTE_HOST &lt;&lt; 'ENDSSH'</p>
+  cd /opt/sentinel
+  tar -xzf /tmp/sentinel-deploy.tar.gz
+  npm install --production
+  sudo systemctl restart sentinel
+  sleep 5
+  curl -f http://localhost:3000/health &amp;&amp; echo "✅ Deployment successful!"
+<p>ENDSSH</p>
+
+<h1>Cleanup</h1>
+<p>rm sentinel-deploy.tar.gz</p>
+
+<p>echo "✨ Deployment complete!"</p>
+</code></pre>
+
+<pre><code class="language-bash">chmod +x scripts/deploy.sh
+<p>./scripts/deploy.sh</p>
+</code></pre>
+
+<h2>Monitoring</h2>
+
+<h3>Application Health Monitoring</h3>
+
+<h4>Built-in Health Endpoint</h4>
+<pre><code class="language-bash"># Simple health check
+<p>curl http://localhost:3000/health</p>
+
+<h1>Detailed status</h1>
+<p>curl http://localhost:3000/status</p>
+</code></pre>
+
+<h4>Uptime Monitoring Services</h4>
+<p>Configure external monitoring with:</p>
+<ul><li><strong>UptimeRobot</strong>: https://uptimerobot.com (free tier available)</li>
+<li><strong>Pingdom</strong>: https://www.pingdom.com</li>
+<li><strong>StatusCake</strong>: https://www.statuscake.com</li>
+</ul>
+<p>Monitor: <code>http://claudinator:3000/health</code> every 5 minutes</p>
+
+<h3>System Resource Monitoring</h3>
+
+<h4>With Systemd Journal</h4>
+<pre><code class="language-bash"># View real-time logs
+<p>sudo journalctl -u sentinel -f</p>
+
+<h1>View logs from last hour</h1>
+<p>sudo journalctl -u sentinel --since "1 hour ago"</p>
+
+<h1>View errors only</h1>
+<p>sudo journalctl -u sentinel -p err</p>
+
+<h1>Export logs</h1>
+<p>sudo journalctl -u sentinel --since "2024-01-01" &gt; sentinel-logs.txt</p>
+</code></pre>
+
+<h4>With PM2</h4>
+<pre><code class="language-bash"># Real-time logs
+<p>pm2 logs sentinel</p>
+
+<h1>Monitor CPU/Memory</h1>
+<p>pm2 monit</p>
+
+<h1>View detailed info</h1>
+<p>pm2 show sentinel</p>
+</code></pre>
+
+<h3>Database Monitoring</h3>
+
+<pre><code class="language-bash"># Check database size
+<p>ls -lh /var/sentinel/sentinel.db</p>
+
+<h1>SQLite statistics</h1>
+<p>sqlite3 /var/sentinel/sentinel.db "</p>
+<p>SELECT </p>
+  name,
+  (SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=t.name) as row_count
+<p>FROM sqlite_master t WHERE type='table';</p>
+"
+
+<h1>Check for database locks</h1>
+<p>fuser /var/sentinel/sentinel.db</p>
+</code></pre>
+
+<h3>Performance Monitoring</h3>
+
+<h4>Node.js Built-in Profiling</h4>
+<p>Add to your application for production profiling:</p>
+<pre><code class="language-javascript">// In src/server.js - add at startup
+<p>if (process.env.NODE_ENV === 'production') {</p>
+  const v8 = require('v8');
+  const fs = require('fs');
+  
+  setInterval(() =&gt; {
+    const stats = {
+      memory: process.memoryUsage(),
+      cpu: process.cpuUsage(),
+      uptime: process.uptime()
+    };
+    fs.appendFileSync('/var/log/sentinel-stats.log', JSON.stringify(stats) + '\n');
+  }, 60000); // Every minute
+}
+</code></pre>
+
+<h4>Prometheus Metrics (Suggested)</h4>
+<p>Install <code>prom-client</code> for Prometheus-compatible metrics:</p>
+<pre><code class="language-bash">npm install prom-client
+</code></pre>
+
+<h3>Alert Configuration</h3>
+
+<p>Create alerting rules for:</p>
+<ul><li><strong>Service Down</strong>: Health check fails for 2+ minutes</li>
+<li><strong>High Memory</strong>: Memory usage > 512MB</li>
+<li><strong>Database Issues</strong>: Database size > 1GB or lock detected</li>
+<li><strong>SSH Failures</strong>: Cannot connect to monitored VMs</li>
+</ul>
+<h3>Log Rotation</h3>
+
+<p>Configure logrotate for systemd journals:</p>
+<pre><code class="language-bash">sudo nano /etc/systemd/journald.conf
+</code></pre>
+
+<pre><code class="language-ini">[Journal]
+<p>SystemMaxUse=500M</p>
+<p>SystemMaxFileSize=50M</p>
+<p>MaxRetentionSec=2week</p>
+</code></pre>
+
+<pre><code class="language-bash">sudo systemctl restart systemd-journald
+</code></pre>
+
+<h3>Backup Strategy</h3>
+
+<pre><code class="language-bash"># Daily database backup script
+<p>#!/bin/bash</p>
+<p>BACKUP_DIR="/var/backups/sentinel"</p>
+<p>mkdir -p $BACKUP_DIR</p>
+
+<h1>Backup with timestamp</h1>
+<p>sqlite3 /var/sentinel/sentinel.db ".backup $BACKUP_DIR/sentinel-$(date +%Y%m%d-%H%M%S).db"</p>
+
+<h1>Keep only last 7 days</h1>
+<p>find $BACKUP_DIR -name "sentinel-*.db" -mtime +7 -delete</p>
+</code></pre>
+
+<p>Add to crontab:</p>
+<pre><code class="language-bash">sudo crontab -e
+<p>0 2 <em> </em> * /opt/sentinel/scripts/backup.sh</p>
+</code></pre>
+
+<h3>Recommended Monitoring Stack</h3>
+
+<strong>For Production:</strong>
+<p>1. <strong>Grafana + Prometheus</strong>: Full metrics dashboard</p>
+<p>2. <strong>Loki</strong>: Log aggregation</p>
+<p>3. <strong>Alertmanager</strong>: Alert routing and notifications</p>
+<p>4. <strong>Node Exporter</strong>: System metrics</p>
+
+<strong>Quick Setup:</strong>
+<pre><code class="language-bash"># Install node_exporter for system metrics
+<p>wget https://github.com/prometheus/node_exporter/releases/download/v1.7.0/node_exporter-1.7.0.linux-amd64.tar.gz</p>
+<p>tar xvfz node_exporter-1.7.0.linux-amd64.tar.gz</p>
+<p>sudo cp node_exporter-1.7.0.linux-amd64/node_exporter /usr/local/bin/</p>
+<p>sudo useradd -rs /bin/false node_exporter</p>
+
+<h1>Create systemd service for node_exporter</h1>
+<p>sudo nano /etc/systemd/system/node_exporter.service</p>
+</code></pre>
+
+<p>This gives you infrastructure-wide visibility including Sentinel's health.</p>
+<hr>
+
+<h2>Related Documentation</h2>
+
+<ul><li><a href="README.md">Readme</a></li>
+<li><a href="ARCHITECTURE.md">Architecture</a></li>
+<li><a href="API.md">Api</a></li>
+<li><a href="CONTRIBUTING.md">Contributing</a></li>
+</ul>
+    <div class="footer">
+      Generated by Athena &mdash; &copy; 2026 TheForge, LLC
+    </div>
+  </main>
+</body>
+</html>

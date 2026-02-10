@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API - sentinel</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      background: #0d1117; color: #c9d1d9; display: flex; min-height: 100vh;
+    }
+    .sidebar {
+      width: 260px; background: #161b22; border-right: 1px solid #30363d;
+      padding: 1rem 0; position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto;
+    }
+    .sidebar-header {
+      padding: 1rem 1.25rem; font-size: 1.1rem; font-weight: 700;
+      border-bottom: 1px solid #30363d; margin-bottom: 0.5rem;
+      color: #58a6ff;
+    }
+    .nav-item {
+      display: block; padding: 0.5rem 1.25rem; color: #c9d1d9;
+      text-decoration: none; font-size: 0.9rem;
+      border-left: 3px solid transparent; transition: all 0.15s;
+    }
+    .nav-item:hover { background: #1f6feb33; }
+    .nav-item.active {
+      background: #1f6feb33; border-left-color: #58a6ff; font-weight: 600;
+    }
+    .content {
+      margin-left: 260px; padding: 2rem 3rem; max-width: 900px; width: 100%;
+    }
+    h1 { font-size: 2rem; margin: 0.5em 0; border-bottom: 1px solid #30363d; padding-bottom: 0.3em; }
+    h2 { font-size: 1.5rem; margin: 1.5em 0 0.5em; border-bottom: 1px solid #30363d; padding-bottom: 0.2em; }
+    h3 { font-size: 1.25rem; margin: 1.2em 0 0.4em; }
+    h4 { font-size: 1.1rem; margin: 1em 0 0.3em; }
+    p { margin: 0.6em 0; line-height: 1.6; }
+    a { color: #58a6ff; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code {
+      background: #1c2128; padding: 0.2em 0.4em; border-radius: 4px;
+      font-family: "SFMono-Regular", Consolas, monospace; font-size: 0.85em;
+    }
+    pre {
+      background: #1c2128; padding: 1em; border-radius: 8px;
+      overflow-x: auto; margin: 1em 0; border: 1px solid #30363d;
+    }
+    pre code { background: none; padding: 0; }
+    table {
+      border-collapse: collapse; width: 100%; margin: 1em 0;
+    }
+    td, th {
+      border: 1px solid #30363d; padding: 0.5em 0.75em; text-align: left;
+    }
+    tr:nth-child(even) { background: #1c2128; }
+    ul { padding-left: 1.5em; margin: 0.5em 0; }
+    li { margin: 0.3em 0; line-height: 1.5; }
+    hr { border: none; border-top: 1px solid #30363d; margin: 2em 0; }
+    img { border: 1px solid #30363d; }
+    .mermaid { margin: 1.5em 0; }
+    .footer {
+      margin-top: 4em; padding-top: 1em; border-top: 1px solid #30363d;
+      font-size: 0.8em; opacity: 0.6;
+    }
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .content { margin-left: 0; padding: 1rem; }
+    }
+  </style>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "dark" });
+  </script>
+</head>
+<body>
+  <nav class="sidebar">
+    <div class="sidebar-header">sentinel</div>
+    <a href="api.html" class="nav-item active">API</a>
+          <a href="architecture.html" class="nav-item">ARCHITECTURE</a>
+          <a href="contributing.html" class="nav-item">CONTRIBUTING</a>
+          <a href="deployment.html" class="nav-item">DEPLOYMENT</a>
+          <a href="readme.html" class="nav-item">README</a>
+          <a href="diagrams.html" class="nav-item">DIAGRAMS</a>
+  </nav>
+  <main class="content">
+    <h1>API.md — Sentinel</h1>
+
+<h2>Table of Contents</h2>
+
+<ul><li><a href="#apimd-sentinel">API.md — Sentinel</a></li>
+</ul>  - <a href="#overview">Overview</a>
+  - <a href="#endpoints">Endpoints</a>
+    - <a href="#health-status">Health & Status</a>
+    - <a href="#status-hosts">Status & Hosts</a>
+    - <a href="#containers">Containers</a>
+    - <a href="#alerts">Alerts</a>
+    - <a href="#backups">Backups</a>
+    - <a href="#configuration">Configuration</a>
+    - <a href="#events">Events</a>
+    - <a href="#forge-integration">Forge Integration</a>
+    - <a href="#healing">Healing</a>
+  - <a href="#error-handling">Error Handling</a>
+    - <a href="#common-http-status-codes">Common HTTP Status Codes</a>
+    - <a href="#example-error-response">Example Error Response</a>
+  - <a href="#rate-limiting">Rate Limiting</a>
+  - <a href="#notes">Notes</a>
+  - <a href="#related-documentation">Related Documentation</a>
+
+<h2>Overview</h2>
+
+<p>Sentinel provides a RESTful API for real-time infrastructure monitoring and alerting across the TheForge ecosystem. The API enables monitoring of VMs, Docker containers, services, backup status, and system healing operations.</p>
+
+<strong>Base URL:</strong> <code>http://localhost:3000/api</code>
+
+<strong>Authentication:</strong> None (inferred - internal infrastructure service)
+
+<strong>Response Format:</strong> JSON
+
+<h2>Endpoints</h2>
+
+<h3>Health & Status</h3>
+
+<h4>GET /health</h4>
+
+<p>Health check endpoint for service monitoring.</p>
+
+<strong>Description:</strong> Returns the health status of the Sentinel service itself.
+
+<strong>Response:</strong>
+<pre><code class="language-json">{
+  "status": "healthy",
+  "timestamp": "2026-02-10T09:08:21.299Z"
+}
+</code></pre>
+
+<strong>Example Request:</strong>
+<pre><code class="language-bash">curl http://localhost:3000/health
+</code></pre>
+
+<hr>
+
+<h3>Status & Hosts</h3>
+
+<h4>GET /api/status</h4>
+
+<p>Get overall system status.</p>
+
+<strong>Description:</strong> Returns aggregated status information across all monitored hosts.
+
+<strong>Response:</strong>
+<pre><code class="language-json">{
+  "hosts": [],
+  "containers": {},
+  "services": {}
+}
+</code></pre>
+
+<strong>Example Request:</strong>
+<pre><code class="language-bash">curl http://localhost:3000/api/status
+</code></pre>
+
+<hr>
+
+<h4>GET /api/hosts</h4>
+
+<p>List all monitored hosts.</p>
+
+<strong>Description:</strong> Returns a list of all hosts being monitored by Sentinel.
+
+<strong>Response:</strong>
+<pre><code class="language-json">[
+  {
+    "id": "string",
+    "name": "string",
+    "status": "online|offline",
+    "lastCheck": "timestamp"
+  }
+]
+</code></pre>
+
+<strong>Example Request:</strong>
+<pre><code class="language-bash">curl http://localhost:3000/api/hosts
+</code></pre>
+
+<hr>
+
+<h4>GET /api/hosts/:id</h4>
+
+<p>Get specific host details.</p>
+
+<strong>Description:</strong> Returns detailed information about a specific host.
+
+<strong>Path Parameters:</strong>
+
+<table><tr><td>Parameter</td><td>Type</td><td>Required</td><td>Description</td></tr>
+<tr><td>-----------</td><td>--------</td><td>----------</td><td>-----------------------</td></tr>
+<tr><td>id</td><td>string</td><td>Yes</td><td>Unique host identifier</td></tr>
+</table>
+<strong>Response:</strong>
+<pre><code class="language-json">{
+  "id": "string",
+  "name": "string",
+  "status": "online|offline",
+  "metrics": {},
+  "containers": []
+}
+</code></pre>
+
+<strong>Example Request:</strong>
+<pre><code class="language-bash">curl http://localhost:3000/api/hosts/claudinator
+</code></pre>
+
+<hr>
+
+<h4>GET /api/hosts/:id/metrics</h4>
+
+<p>Get host metrics.</p>
+
+<strong>Description:</strong> Returns performance and health metrics for a specific host.
+
+<strong>Path Parameters:</strong>
+
+<table><tr><td>Parameter</td><td>Type</td><td>Required</td><td>Description</td></tr>
+<tr><td>-----------</td><td>--------</td><td>----------</td><td>-----------------------</td></tr>
+<tr><td>id</td><td>string</td><td>Yes</td><td>Unique host identifier</td></tr>
+</table>
+<strong>Response:</strong>
+<pre><code class="language-json">{
+  "cpu": "number",
+  "memory": "number",
+  "disk": "number",
+  "uptime": "number",
+  "timestamp": "timestamp"
+}
+</code></pre>
+
+<strong>Example Request:</strong>
+<pre><code class="language-bash">curl http://localhost:3000/api/hosts/claudinator/metrics
+</code></pre>
+
+<hr>
+
+<h4>POST /api/hosts</h4>
+
+<p>Register a new host.</p>
+
+<strong>Description:</strong> Adds a new host to the monitoring system.
+
+<strong>Request Body:</strong>
+<pre><code class="language-json">{
+  "name": "string",
+  "address": "string",
+  "sshPort": "number",
+  "credentials": {}
+}
+</code></pre>
+
+<strong>Response:</strong>
+<pre><code class="language-json">{
+  "id": "string",
+  "name": "string",
+  "status": "registered"
+}
+</code></pre>
+
+<strong>Example Request:</strong>
+<pre><code class="language-bash">curl -X POST http://localhost:3000/api/hosts \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "new-vm",
+    "address": "192.168.1.100",
+    "sshPort": 22
+  }'
+</code></pre>
+
+<hr>
+
+<h3>Containers</h3>
+
+<h4>GET /api/containers</h4>
+
+<p>List all containers across all hosts.</p>
+
+<strong>Description:</strong> Returns a list of all Docker containers being monitored.
+
+<strong>Response:</strong>
+<pre><code class="language-json">[
+  {
+    "hostId": "string",
+    "name": "string",
+    "status": "running|stopped|restarting",
+    "autoRestart": "boolean"
+  }
+]
+</code></pre>
+
+<strong>Example Request:</strong>
+<pre><code class="language-bash">curl http://localhost:3000/api/containers
+</code></pre>
+
+<hr>
+
+<h4>GET /api/containers/:hostId</h4>
+
+<p>Get containers for a specific host.</p>
+
+<strong>Description:</strong> Returns all containers running on a specific host.
+
+<strong>Path Parameters:</strong>
+
+<table><tr><td>Parameter</td><td>Type</td><td>Required</td><td>Description</td></tr>
+<tr><td>-----------</td><td>--------</td><td>----------</td><td>-----------------------</td></tr>
+<tr><td>hostId</td><td>string</td><td>Yes</td><td>Host identifier</td></tr>
+</table>
+<strong>Response:</strong>
+<pre><code class="language-json">[
+  {
+    "name": "string",
+    "status": "running|stopped|restarting",
+    "image": "string",
+    "ports": [],
+    "autoRestart": "boolean"
+  }
+]
+</code></pre>
+
+<strong>Example Request:</strong>
+<pre><code class="language-bash">curl http://localhost:3000/api/containers/claudinator
+</code></pre>
+
+<hr>
+
+<h4>PUT /api/containers/:hostId/:name/auto-restart</h4>
+
+<p>Enable/disable container auto-restart.</p>
+
+<strong>Description:</strong> Updates the auto-restart configuration for a specific container.
+
+<strong>Path Parameters:</strong>
+
+<table><tr><td>Parameter</td><td>Type</td><td>Required</td><td>Description</td></tr>
+<tr><td>-----------</td><td>--------</td><td>----------</td><td>-----------------------</td></tr>
+<tr><td>hostId</td><td>string</td><td>Yes</td><td>Host identifier</td></tr>
+<tr><td>name</td><td>string</td><td>Yes</td><td>Container name</td></tr>
+</table>
+<strong>Request Body:</strong>
+<pre><code class="language-json">{
+  "enabled": "boolean"
+}
+</code></pre>
+
+<strong>Response:</strong>
+<pre><code class="language-json">{
+  "hostId": "string",
+  "containerName": "string",
+  "autoRestart": "boolean"
+}
+</code></pre>
+
+<strong>Example Request:</strong>
+<pre><code class="language-bash">curl -X PUT http://localhost:3000/api/containers/claudinator/nginx/auto-restart \
+  -H "Content-Type: application/json" \
+  -d '{"enabled": true}'
+</code></pre>
+
+<hr>
+
+<h4>POST /api/containers/:hostId/:name/restart</h4>
+
+<p>Restart a container.</p>
+
+<strong>Description:</strong> Triggers a restart of the specified container.
+
+<strong>Path Parameters:</strong>
+
+<table><tr><td>Parameter</td><td>Type</td><td>Required</td><td>Description</td></tr>
+<tr><td>-----------</td><td>--------</td><td>----------</td><td>-----------------------</td></tr>
+<tr><td>hostId</td><td>string</td><td>Yes</td><td>Host identifier</td></tr>
+<tr><td>name</td><td>string</td><td>Yes</td><td>Container name</td></tr>
+</table>
+<strong>Response:</strong>
+<pre><code class="language-json">{
+  "status": "restarting",
+  "message": "Container restart initiated"
+}
+</code></pre>
+
+<strong>Example Request:</strong>
+<pre><code class="language-bash">curl -X POST http://localhost:3000/api/containers/claudinator/nginx/restart
+</code></pre>
+
+<hr>
+
+<h3>Alerts</h3>
+
+<h4>GET /api/alerts</h4>
+
+<p>List all active alerts.</p>
+
+<strong>Description:</strong> Returns all currently active alerts in the system.
+
+<strong>Response:</strong>
+<pre><code class="language-json">[
+  {
+    "id": "string",
+    "type": "string",
+    "severity": "critical|warning|info",
+    "message": "string",
+    "timestamp": "timestamp",
+    "acknowledged": "boolean"
+  }
+]
+</code></pre>
+
+<strong>Example Request:</strong>
+<pre><code class="language-bash">curl http://localhost:3000/api/alerts
+</code></pre>
+
+<hr>
+
+<h4>POST /api/alerts</h4>
+
+<p>Create a new alert.</p>
+
+<strong>Description:</strong> Manually creates a new alert in the system.
+
+<strong>Request Body:</strong>
+<pre><code class="language-json">{
+  "type": "string",
+  "severity": "critical|warning|info",
+  "message": "string",
+  "metadata": {}
+}
+</code></pre>
+
+<strong>Response:</strong>
+<pre><code class="language-json">{
+  "id": "string",
+  "type": "string",
+  "severity": "string",
+  "message": "string",
+  "timestamp": "timestamp"
+}
+</code></pre>
+
+<strong>Example Request:</strong>
+<pre><code class="language-bash">curl -X POST http://localhost:3000/api/alerts \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "manual",
+    "severity": "warning",
+    "message": "Scheduled maintenance starting"
+  }'
+</code></pre>
+
+<hr>
+
+<h4>PUT /api/alerts/:id</h4>
+
+<p>Update an alert.</p>
+
+<strong>Description:</strong> Updates an existing alert's properties.
+
+<strong>Path Parameters:</strong>
+
+<table><tr><td>Parameter</td><td>Type</td><td>Required</td><td>Description</td></tr>
+<tr><td>-----------</td><td>--------</td><td>----------</td><td>-----------------------</td></tr>
+<tr><td>id</td><td>string</td><td>Yes</td><td>Alert identifier</td></tr>
+</table>
+<strong>Request Body:</strong>
+<pre><code class="language-json">{
+  "severity": "critical|warning|info",
+  "message": "string",
+  "acknowledged": "boolean"
+}
+</code></pre>
+
+<strong>Response:</strong>
+<pre><code class="language-json">{
+  "id": "string",
+  "updated": "boolean"
+}
+</code></pre>
+
+<strong>Example Request:</strong>
+<pre><code class="language-bash">curl -X PUT http://localhost:3000/api/alerts/alert-123 \
+  -H "Content-Type: application/json" \
+  -d '{"severity": "info"}'
+</code></pre>
+
+<hr>
+
+<h4>DELETE /api/alerts/:id</h4>
+
+<p>Delete an alert.</p>
+
+<strong>Description:</strong> Removes an alert from the system.
+
+<strong>Path Parameters:</strong>
+
+<table><tr><td>Parameter</td><td>Type</td><td>Required</td><td>Description</td></tr>
+<tr><td>-----------</td><td>--------</td><td>----------</td><td>-----------------------</td></tr>
+<tr><td>id</td><td>string</td><td>Yes</td><td>Alert identifier</td></tr>
+</table>
+<strong>Response:</strong>
+<pre><code class="language-json">{
+  "deleted": "boolean"
+}
+</code></pre>
+
+<strong>Example Request:</strong>
+<pre><code class="language-bash">curl -X DELETE http://localhost:3000/api/alerts/alert-123
+</code></pre>
+
+<hr>
+
+<h4>GET /api/alerts/history</h4>
+
+<p>Get alert history.</p>
+
+<strong>Description:</strong> Returns historical alert data.
+
+<strong>Query Parameters:</strong>
+
+<table><tr><td>Parameter</td><td>Type</td><td>Required</td><td>Description</td></tr>
+<tr><td>-----------</td><td>--------</td><td>----------</td><td>--------------------------------</td></tr>
+<tr><td>limit</td><td>number</td><td>No</td><td>Maximum number of records (inferred)</td></tr>
+<tr><td>offset</td><td>number</td><td>No</td><td>Pagination offset (inferred)</td></tr>
+</table>
+<strong>Response:</strong>
+<pre><code class="language-json">[
+  {
+    "id": "string",
+    "type": "string",
+    "severity": "string",
+    "message": "string",
+    "timestamp": "timestamp",
+    "acknowledged": "boolean",
+    "acknowledgedAt": "timestamp",
+    "resolvedAt": "timestamp"
+  }
+]
+</code></pre>
+
+<strong>Example Request:</strong>
+<pre><code class="language-bash">curl http://localhost:3000/api/alerts/history?limit=50
+</code></pre>
+
+<hr>
+
+<h4>POST /api/alerts/history/:id/acknowledge</h4>
+
+<p>Acknowledge a historical alert.</p>
+
+<strong>Description:</strong> Marks a historical alert as acknowledged.
+
+<strong>Path Parameters:</strong>
+
+<table><tr><td>Parameter</td><td>Type</td><td>Required</td><td>Description</td></tr>
+<tr><td>-----------</td><td>--------</td><td>----------</td><td>-----------------------</td></tr>
+<tr><td>id</td><td>string</td><td>Yes</td><td>Alert identifier</td></tr>
+</table>
+<strong>Response:</strong>
+<pre><code class="language-json">{
+  "id": "string",
+  "acknowledged": "boolean",
+  "acknowledgedAt": "timestamp"
+}
+</code></pre>
+
+<strong>Example Request:</strong>
+<pre><code class="language-bash">curl -X POST http://localhost:3000/api/alerts/history/alert-123/acknowledge
+</code></pre>
+
+<hr>
+
+<h3>Backups</h3>
+
+<h4>GET /api/backups</h4>
+
+<p>List all backup configurations and status.</p>
+
+<strong>Description:</strong> Returns information about configured backups across all hosts.
+
+<strong>Response:</strong>
+<pre><code class="language-json">[
+  {
+    "hostId": "string",
+    "backupName": "string",
+    "lastRun": "timestamp",
+    "status": "success|failed|pending",
+    "size": "number"
+  }
+]
+</code></pre>
+
+<strong>Example Request:</strong>
+<pre><code class="language-bash">curl http://localhost:3000/api/backups
+</code></pre>
+
+<hr>
+
+<h4>GET /api/backups/history</h4>
+
+<p>Get backup execution history.</p>
+
+<strong>Description:</strong> Returns historical backup execution data.
+
+<strong>Response:</strong>
+<pre><code class="language-json">[
+  {
+    "id": "string",
+    "hostId": "string",
+    "backupName": "string",
+    "timestamp": "timestamp",
+    "status": "success|failed",
+    "duration": "number",
+    "size": "number"
+  }
+]
+</code></pre>
+
+<strong>Example Request:</strong>
+<pre><code class="language-bash">curl http://localhost:3000/api/backups/history
+</code></pre>
+
+<hr>
+
+<h4>POST /api/backups/check</h4>
+
+<p>Trigger a backup check.</p>
+
+<strong>Description:</strong> Manually triggers a backup verification check across all hosts.
+
+<strong>Request Body:</strong>
+<pre><code class="language-json">{
+  "hostId": "string"
+}
+</code></pre>
+
+<strong>Response:</strong>
+<pre><code class="language-json">{
+  "status": "checking",
+  "timestamp": "timestamp"
+}
+</code></pre>
+
+<strong>Example Request:</strong>
+<pre><code class="language-bash">curl -X POST http://localhost:3000/api/backups/check \
+  -H "Content-Type: application/json" \
+  -d '{"hostId": "claudinator"}'
+</code></pre>
+
+<hr>
+
+<h3>Configuration</h3>
+
+<h4>GET /api/config</h4>
+
+<p>Get system configuration.</p>
+
+<strong>Description:</strong> Returns the current Sentinel configuration settings.
+
+<strong>Response:</strong>
+<pre><code class="language-json">{
+  "checkInterval": "number",
+  "alertThresholds": {},
+  "monitoredHosts": [],
+  "backupSettings": {}
+}
+</code></pre>
+
+<strong>Example Request:</strong>
+<pre><code class="language-bash">curl http://localhost:3000/api/config
+</code></pre>
+
+<hr>
+
+<h3>Events</h3>
+
+<h4>GET /api/events</h4>
+
+<p>List recent system events.</p>
+
+<strong>Description:</strong> Returns a stream of recent infrastructure events.
+
+<strong>Query Parameters:</strong>
+
+<table><tr><td>Parameter</td><td>Type</td><td>Required</td><td>Description</td></tr>
+<tr><td>-----------</td><td>--------</td><td>----------</td><td>--------------------------------</td></tr>
+<tr><td>limit</td><td>number</td><td>No</td><td>Maximum number of events (inferred)</td></tr>
+<tr><td>type</td><td>string</td><td>No</td><td>Filter by event type (inferred)</td></tr>
+</table>
+<strong>Response:</strong>
+<pre><code class="language-json">[
+  {
+    "id": "string",
+    "type": "string",
+    "timestamp": "timestamp",
+    "hostId": "string",
+    "message": "string",
+    "metadata": {}
+  }
+]
+</code></pre>
+
+<strong>Example Request:</strong>
+<pre><code class="language-bash">curl http://localhost:3000/api/events?limit=100
+</code></pre>
+
+<hr>
+
+<h4>GET /api/events/status</h4>
+
+<p>Get event processing status.</p>
+
+<strong>Description:</strong> Returns the status of the event processing system.
+
+<strong>Response:</strong>
+<pre><code class="language-json">{
+  "processing": "boolean",
+  "queueSize": "number",
+  "lastProcessed": "timestamp"
+}
+</code></pre>
+
+<strong>Example Request:</strong>
+<pre><code class="language-bash">curl http://localhost:3000/api/events/status
+</code></pre>
+
+<hr>
+
+<h3>Forge Integration</h3>
+
+<h4>GET /api/forge/tasks</h4>
+
+<p>List all Forge orchestrator tasks.</p>
+
+<strong>Description:</strong> Returns all tasks being tracked from TheForge orchestrator.
+
+<strong>Response:</strong>
+<pre><code class="language-json">[
+  {
+    "taskId": "string",
+    "projectId": "string",
+    "status": "string",
+    "progress": "number",
+    "startedAt": "timestamp"
+  }
+]
+</code></pre>
+
+<strong>Example Request:</strong>
+<pre><code class="language-bash">curl http://localhost:3000/api/forge/tasks
+</code></pre>
+
+<hr>
+
+<h4>GET /api/forge/tasks/:projectId</h4>
+
+<p>Get tasks for a specific project.</p>
+
+<strong>Description:</strong> Returns all Forge tasks associated with a specific project.
+
+<strong>Path Parameters:</strong>
+
+<table><tr><td>Parameter</td><td>Type</td><td>Required</td><td>Description</td></tr>
+<tr><td>-----------</td><td>--------</td><td>----------</td><td>-----------------------</td></tr>
+<tr><td>projectId</td><td>string</td><td>Yes</td><td>TheForge project ID</td></tr>
+</table>
+<strong>Response:</strong>
+<pre><code class="language-json">[
+  {
+    "taskId": "string",
+    "projectId": "string",
+    "status": "string",
+    "progress": "number",
+    "startedAt": "timestamp",
+    "completedAt": "timestamp"
+  }
+]
+</code></pre>
+
+<strong>Example Request:</strong>
+<pre><code class="language-bash">curl http://localhost:3000/api/forge/tasks/26
+</code></pre>
+
+<hr>
+
+<h4>GET /api/forge/activity</h4>
+
+<p>Get recent Forge activity.</p>
+
+<strong>Description:</strong> Returns recent activity from TheForge orchestrator.
+
+<strong>Response:</strong>
+<pre><code class="language-json">[
+  {
+    "timestamp": "timestamp",
+    "projectId": "string",
+    "action": "string",
+    "status": "string"
+  }
+]
+</code></pre>
+
+<strong>Example Request:</strong>
+<pre><code class="language-bash">curl http://localhost:3000/api/forge/activity
+</code></pre>
+
+<hr>
+
+<h4>GET /api/forge/projects</h4>
+
+<p>List monitored Forge projects.</p>
+
+<strong>Description:</strong> Returns all TheForge projects being monitored by Sentinel.
+
+<strong>Response:</strong>
+<pre><code class="language-json">[
+  {
+    "projectId": "string",
+    "name": "string",
+    "status": "string",
+    "lastActivity": "timestamp"
+  }
+]
+</code></pre>
+
+<strong>Example Request:</strong>
+<pre><code class="language-bash">curl http://localhost:3000/api/forge/projects
+</code></pre>
+
+<hr>
+
+<h3>Healing</h3>
+
+<h4>GET /api/healing</h4>
+
+<p>Get auto-healing status.</p>
+
+<strong>Description:</strong> Returns the status of the auto-healing system and recent actions.
+
+<strong>Response:</strong>
+<pre><code class="language-json">{
+  "enabled": "boolean",
+  "recentActions": [],
+  "stats": {
+    "totalHeals": "number",
+    "successRate": "number"
+  }
+}
+</code></pre>
+
+<strong>Example Request:</strong>
+<pre><code class="language-bash">curl http://localhost:3000/api/healing
+</code></pre>
+
+<hr>
+
+<h4>GET /api/healing/stats</h4>
+
+<p>Get healing statistics.</p>
+
+<strong>Description:</strong> Returns detailed statistics about auto-healing operations.
+
+<strong>Response:</strong>
+<pre><code class="language-json">{
+  "totalAttempts": "number",
+  "successful": "number",
+  "failed": "number",
+  "byType": {},
+  "byHost": {}
+}
+</code></pre>
+
+<strong>Example Request:</strong>
+<pre><code class="language-bash">curl http://localhost:3000/api/healing/stats
+</code></pre>
+
+<hr>
+
+<h2>Error Handling</h2>
+
+<p>All endpoints follow a consistent error response format:</p>
+
+<pre><code class="language-json">{
+  "error": {
+    "code": "string",
+    "message": "string",
+    "details": {}
+  }
+}
+</code></pre>
+
+<h3>Common HTTP Status Codes</h3>
+
+<table><tr><td>Status Code</td><td>Description</td></tr>
+<tr><td>-------------</td><td>------------------------------------------------</td></tr>
+<tr><td>200</td><td>Success</td></tr>
+<tr><td>201</td><td>Resource created successfully</td></tr>
+<tr><td>400</td><td>Bad request - invalid parameters</td></tr>
+<tr><td>404</td><td>Resource not found</td></tr>
+<tr><td>500</td><td>Internal server error</td></tr>
+<tr><td>503</td><td>Service unavailable (e.g., SSH connection failed)</td></tr>
+</table>
+<h3>Example Error Response</h3>
+
+<pre><code class="language-json">{
+  "error": {
+    "code": "HOST_UNREACHABLE",
+    "message": "Unable to connect to host 'claudinator'",
+    "details": {
+      "hostId": "claudinator",
+      "reason": "SSH connection timeout"
+    }
+  }
+}
+</code></pre>
+
+<hr>
+
+<h2>Rate Limiting</h2>
+
+<strong>(inferred)</strong> No explicit rate limiting detected in the codebase. As an internal infrastructure service, rate limiting may not be necessary. However, consider implementing rate limiting if exposing this API beyond internal infrastructure.
+
+<hr>
+
+<h2>Notes</h2>
+
+<ul><li>This API is designed for internal infrastructure monitoring within the TheForge ecosystem</li>
+<li>SSH connectivity (via ssh2 library) is used for host communication</li>
+<li>Data persistence is handled via better-sqlite3</li>
+<li>Scheduled monitoring tasks run via node-cron</li>
+<li>All timestamps are in ISO 8601 format</li>
+<li>Most response structures are inferred from route definitions and may vary based on actual implementation</li>
+</ul><hr>
+
+<h2>Related Documentation</h2>
+
+<ul><li><a href="README.md">Readme</a></li>
+<li><a href="ARCHITECTURE.md">Architecture</a></li>
+<li><a href="DEPLOYMENT.md">Deployment</a></li>
+<li><a href="CONTRIBUTING.md">Contributing</a></li>
+</ul>
+    <div class="footer">
+      Generated by Athena &mdash; &copy; 2026 TheForge, LLC
+    </div>
+  </main>
+</body>
+</html>

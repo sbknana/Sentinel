@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ARCHITECTURE - sentinel</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      background: #0d1117; color: #c9d1d9; display: flex; min-height: 100vh;
+    }
+    .sidebar {
+      width: 260px; background: #161b22; border-right: 1px solid #30363d;
+      padding: 1rem 0; position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto;
+    }
+    .sidebar-header {
+      padding: 1rem 1.25rem; font-size: 1.1rem; font-weight: 700;
+      border-bottom: 1px solid #30363d; margin-bottom: 0.5rem;
+      color: #58a6ff;
+    }
+    .nav-item {
+      display: block; padding: 0.5rem 1.25rem; color: #c9d1d9;
+      text-decoration: none; font-size: 0.9rem;
+      border-left: 3px solid transparent; transition: all 0.15s;
+    }
+    .nav-item:hover { background: #1f6feb33; }
+    .nav-item.active {
+      background: #1f6feb33; border-left-color: #58a6ff; font-weight: 600;
+    }
+    .content {
+      margin-left: 260px; padding: 2rem 3rem; max-width: 900px; width: 100%;
+    }
+    h1 { font-size: 2rem; margin: 0.5em 0; border-bottom: 1px solid #30363d; padding-bottom: 0.3em; }
+    h2 { font-size: 1.5rem; margin: 1.5em 0 0.5em; border-bottom: 1px solid #30363d; padding-bottom: 0.2em; }
+    h3 { font-size: 1.25rem; margin: 1.2em 0 0.4em; }
+    h4 { font-size: 1.1rem; margin: 1em 0 0.3em; }
+    p { margin: 0.6em 0; line-height: 1.6; }
+    a { color: #58a6ff; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code {
+      background: #1c2128; padding: 0.2em 0.4em; border-radius: 4px;
+      font-family: "SFMono-Regular", Consolas, monospace; font-size: 0.85em;
+    }
+    pre {
+      background: #1c2128; padding: 1em; border-radius: 8px;
+      overflow-x: auto; margin: 1em 0; border: 1px solid #30363d;
+    }
+    pre code { background: none; padding: 0; }
+    table {
+      border-collapse: collapse; width: 100%; margin: 1em 0;
+    }
+    td, th {
+      border: 1px solid #30363d; padding: 0.5em 0.75em; text-align: left;
+    }
+    tr:nth-child(even) { background: #1c2128; }
+    ul { padding-left: 1.5em; margin: 0.5em 0; }
+    li { margin: 0.3em 0; line-height: 1.5; }
+    hr { border: none; border-top: 1px solid #30363d; margin: 2em 0; }
+    img { border: 1px solid #30363d; }
+    .mermaid { margin: 1.5em 0; }
+    .footer {
+      margin-top: 4em; padding-top: 1em; border-top: 1px solid #30363d;
+      font-size: 0.8em; opacity: 0.6;
+    }
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .content { margin-left: 0; padding: 1rem; }
+    }
+  </style>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "dark" });
+  </script>
+</head>
+<body>
+  <nav class="sidebar">
+    <div class="sidebar-header">sentinel</div>
+    <a href="api.html" class="nav-item">API</a>
+          <a href="architecture.html" class="nav-item active">ARCHITECTURE</a>
+          <a href="contributing.html" class="nav-item">CONTRIBUTING</a>
+          <a href="deployment.html" class="nav-item">DEPLOYMENT</a>
+          <a href="readme.html" class="nav-item">README</a>
+          <a href="diagrams.html" class="nav-item">DIAGRAMS</a>
+  </nav>
+  <main class="content">
+    <h1>ARCHITECTURE.md</h1>
+
+<h2>Table of Contents</h2>
+
+<ul><li><a href="#architecturemd">ARCHITECTURE.md</a></li>
+</ul>  - <a href="#overview">Overview</a>
+  - <a href="#system-architecture">System Architecture</a>
+  - <a href="#component-tree">Component Tree</a>
+  - <a href="#data-flow">Data Flow</a>
+  - <a href="#database-schema">Database Schema</a>
+  - <a href="#directory-structure">Directory Structure</a>
+  - <a href="#design-decisions">Design Decisions</a>
+    - <a href="#1-expressjs-framework">1. <strong>Express.js Framework</strong></a>
+    - <a href="#2-sqlite-database">2. <strong>SQLite Database</strong></a>
+    - <a href="#3-ssh-based-agent-less-monitoring">3. <strong>SSH-Based Agent-less Monitoring</strong></a>
+    - <a href="#4-cron-based-scheduling">4. <strong>Cron-Based Scheduling</strong></a>
+    - <a href="#5-modular-route-structure">5. <strong>Modular Route Structure</strong></a>
+    - <a href="#6-restful-api-design">6. <strong>RESTful API Design</strong></a>
+  - <a href="#dependencies">Dependencies</a>
+    - <a href="#better-sqlite3-v1100"><strong>better-sqlite3</strong> (v11.0.0)</a>
+    - <a href="#express-v4210"><strong>express</strong> (v4.21.0)</a>
+    - <a href="#node-cron-v421"><strong>node-cron</strong> (v4.2.1)</a>
+    - <a href="#ssh2-v1170"><strong>ssh2</strong> (v1.17.0)</a>
+  - <a href="#related-documentation">Related Documentation</a>
+
+<h2>Overview</h2>
+
+<p>Sentinel is an infrastructure monitoring and alerting system built with Express.js and Node.js that provides real-time visibility into TheForge ecosystem infrastructure. The application runs as a centralized monitoring hub on the Claudinator host (port 3000) and connects to remote VMs via SSH to collect metrics about Docker containers, system resources, services, and backup status. The architecture follows a modular design with separate route handlers for different monitoring domains (containers, alerts, backups, healing, events, forge tasks).</p>
+
+<p>The system uses SQLite (via better-sqlite3) as its persistence layer to store host configurations, alert rules, historical data, and audit logs. A cron-based scheduler (node-cron) drives periodic monitoring tasks including container health checks, backup verification, metric collection, and alert evaluation. SSH2 enables secure remote command execution on monitored hosts to gather Docker and system statistics.</p>
+
+<p>The application is designed for low-overhead monitoring with a simple REST API that can be consumed by frontend dashboards or other automation tools. All monitoring logic is server-side, eliminating the need for agents on monitored VMs.</p>
+
+<h2>System Architecture</h2>
+
+<div class="mermaid">graph TD
+    A[Express Server :3000] --&gt; B[Route Controllers]
+    A --&gt; C[Monitoring Services]
+    A --&gt; D[Database SQLite]
+    
+    B --&gt; B1[/api/containers]
+    B --&gt; B2[/api/alerts]
+    B --&gt; B3[/api/backups]
+    B --&gt; B4[/api/healing]
+    B --&gt; B5[/api/forge]
+    B --&gt; B6[/api/events]
+    B --&gt; B7[/api/status]
+    B --&gt; B8[/api/config]
+    
+    C --&gt; C1[Cron Scheduler]
+    C --&gt; C2[SSH Client]
+    C --&gt; C3[Alert Engine]
+    
+    C1 --&gt; C2
+    C2 --&gt; E[Remote VMs via SSH]
+    C3 --&gt; F[Alert Handlers]
+    
+    D --&gt; G[Hosts Config]
+    D --&gt; H[Alert Rules]
+    D --&gt; I[Metrics History]
+    D --&gt; J[Audit Logs]
+    
+    C2 --&gt; D
+    C3 --&gt; D
+    B --&gt; D
+</div>
+
+<h2>Component Tree</h2>
+
+<div class="mermaid">graph TD
+    A[src/server.js] --&gt; B[Route Modules]
+    A --&gt; C[Service Modules]
+    A --&gt; D[Database Module]
+    
+    B --&gt; B1[routes/containers.js]
+    B --&gt; B2[routes/alerts.js]
+    B --&gt; B3[routes/backups.js]
+    B --&gt; B4[routes/healing.js]
+    B --&gt; B5[routes/forge.js]
+    B --&gt; B6[routes/events.js]
+    B --&gt; B7[routes/status.js]
+    B --&gt; B8[routes/configRoute.js]
+    
+    C --&gt; C1[services/monitoring]
+    C --&gt; C2[services/ssh]
+    C --&gt; C3[services/scheduler]
+    C --&gt; C4[services/alerts]
+    
+    D --&gt; D1[db/schema]
+    D --&gt; D2[db/queries]
+</div>
+
+<h2>Data Flow</h2>
+
+<div class="mermaid">sequenceDiagram
+    participant Client
+    participant Express
+    participant Routes
+    participant Services
+    participant SSH
+    participant SQLite
+    participant RemoteVM
+
+    Client-&gt;&gt;Express: GET /api/containers/:hostId
+    Express-&gt;&gt;Routes: containers.js handler
+    Routes-&gt;&gt;SQLite: Fetch host credentials
+    SQLite--&gt;&gt;Routes: Host config
+    Routes-&gt;&gt;Services: Request container stats
+    Services-&gt;&gt;SSH: Connect to VM
+    SSH-&gt;&gt;RemoteVM: Execute docker commands
+    RemoteVM--&gt;&gt;SSH: Container data
+    SSH--&gt;&gt;Services: Parsed metrics
+    Services-&gt;&gt;SQLite: Store metrics
+    Services--&gt;&gt;Routes: Container status
+    Routes--&gt;&gt;Express: JSON response
+    Express--&gt;&gt;Client: 200 OK with data
+
+    Note over Services,SQLite: Cron Scheduler (background)
+    Services-&gt;&gt;SSH: Periodic health checks
+    SSH-&gt;&gt;RemoteVM: Monitor containers
+    RemoteVM--&gt;&gt;SSH: Health status
+    Services-&gt;&gt;SQLite: Update metrics
+    Services-&gt;&gt;Services: Evaluate alert rules
+    Services-&gt;&gt;SQLite: Store alert history
+</div>
+
+<h2>Database Schema</h2>
+
+<div class="mermaid">erDiagram
+    HOSTS {
+        int id PK
+        string name
+        string hostname
+        int port
+        string username
+        string auth_type
+        text credentials
+        boolean enabled
+        datetime created_at
+    }
+    
+    CONTAINERS {
+        int id PK
+        int host_id FK
+        string name
+        string status
+        boolean auto_restart
+        datetime last_checked
+    }
+    
+    ALERTS {
+        int id PK
+        string name
+        string type
+        text conditions
+        string severity
+        boolean enabled
+        datetime created_at
+    }
+    
+    ALERT_HISTORY {
+        int id PK
+        int alert_id FK
+        int host_id FK
+        string message
+        string severity
+        boolean acknowledged
+        datetime triggered_at
+        datetime acknowledged_at
+    }
+    
+    METRICS {
+        int id PK
+        int host_id FK
+        string metric_type
+        text data
+        datetime collected_at
+    }
+    
+    BACKUPS {
+        int id PK
+        int host_id FK
+        string backup_type
+        string status
+        text details
+        datetime checked_at
+    }
+    
+    HOSTS ||--o{ CONTAINERS : monitors
+    HOSTS ||--o{ METRICS : collects
+    HOSTS ||--o{ BACKUPS : tracks
+    ALERTS ||--o{ ALERT_HISTORY : generates
+    HOSTS ||--o{ ALERT_HISTORY : triggers
+</div>
+
+<h2>Directory Structure</h2>
+
+<pre><code class="language-text">sentinel/
+<p>├── src/</p>
+<p>│   ├── server.js                 # Express app entry point</p>
+<p>│   ├── routes/                   # API route handlers</p>
+<p>│   │   ├── alerts.js            # Alert CRUD and history</p>
+<p>│   │   ├── backups.js           # Backup status checks</p>
+<p>│   │   ├── configRoute.js       # System configuration</p>
+<p>│   │   ├── containers.js        # Docker container monitoring</p>
+<p>│   │   ├── events.js            # System event log</p>
+<p>│   │   ├── forge.js             # TheForge task tracking</p>
+<p>│   │   ├── healing.js           # Self-healing stats</p>
+<p>│   │   └── status.js            # Host status and metrics</p>
+<p>│   ├── services/                # Business logic layer</p>
+<p>│   │   ├── monitoring/          # Metric collection services</p>
+<p>│   │   ├── ssh/                 # SSH connection management</p>
+<p>│   │   ├── scheduler/           # Cron job definitions</p>
+<p>│   │   └── alerts/              # Alert evaluation engine</p>
+<p>│   ├── db/                      # Database layer</p>
+<p>│   │   ├── schema.sql           # SQLite schema</p>
+<p>│   │   └── queries.js           # Prepared statements</p>
+<p>│   └── utils/                   # Shared utilities</p>
+<p>├── data/                        # SQLite database files</p>
+<p>├── logs/                        # Application logs</p>
+<p>└── package.json</p>
+</code></pre>
+
+<h2>Design Decisions</h2>
+
+<h3>1. <strong>Express.js Framework</strong></h3>
+<p>Chosen for its simplicity and minimal overhead. Sentinel is a monitoring tool that needs to be lightweight and reliable. Express provides just enough structure for REST APIs without framework bloat. The application can run on minimal resources while monitoring multiple VMs.</p>
+
+<h3>2. <strong>SQLite Database</strong></h3>
+<p>Selected over PostgreSQL/MySQL because:</p>
+<ul><li>No separate database server to maintain (eliminates a dependency)</li>
+<li>File-based storage is simple to backup</li>
+<li>Sufficient performance for monitoring data (not handling high-concurrency writes)</li>
+<li>Zero configuration required</li>
+<li>Perfect for single-node monitoring hub</li>
+</ul>
+<h3>3. <strong>SSH-Based Agent-less Monitoring</strong></h3>
+<p>Rather than deploying agents on each monitored VM, Sentinel uses SSH to execute commands remotely. This approach:</p>
+<ul><li>Reduces attack surface (no new services on VMs)</li>
+<li>Simplifies deployment (no agent installation)</li>
+<li>Leverages existing SSH infrastructure</li>
+<li>Allows monitoring any VM with SSH access</li>
+<li>Centralizes all monitoring logic in one place</li>
+</ul>
+<h3>4. <strong>Cron-Based Scheduling</strong></h3>
+<p>node-cron provides a simple in-process scheduler for periodic tasks. This eliminates the need for external cron configurations or separate scheduler services. All monitoring intervals are defined in code and run within the Node.js process.</p>
+
+<h3>5. <strong>Modular Route Structure</strong></h3>
+<p>Each monitoring domain (containers, alerts, backups, etc.) has its own route file. This separation:</p>
+<ul><li>Makes the codebase easier to navigate</li>
+<li>Allows independent testing of features</li>
+<li>Enables team members to work on different domains without conflicts</li>
+<li>Follows single-responsibility principle</li>
+</ul>
+<h3>6. <strong>RESTful API Design</strong></h3>
+<p>All functionality is exposed via REST endpoints rather than building a monolithic web UI. This allows:</p>
+<ul><li>Frontend flexibility (any client can consume the API)</li>
+<li>CLI tool integration</li>
+<li>Automation via scripts</li>
+<li>Future mobile app development</li>
+</ul>
+<h2>Dependencies</h2>
+
+<h3><strong>better-sqlite3</strong> (v11.0.0)</h3>
+<p>Synchronous SQLite3 bindings with better performance than the async alternatives. Chosen because:</p>
+<ul><li>Significantly faster than node-sqlite3 (synchronous I/O is fine for monitoring workloads)</li>
+<li>Native compiled module provides excellent performance</li>
+<li>Simple API with prepared statements</li>
+<li>No callback hell or promise chains for database queries</li>
+<li>WAL mode support for concurrent reads during writes</li>
+</ul>
+<h3><strong>express</strong> (v4.21.0)</h3>
+<p>Industry-standard web framework for Node.js. Selected for:</p>
+<ul><li>Mature ecosystem with extensive middleware availability</li>
+<li>Excellent documentation and community support</li>
+<li>Lightweight and unopinionated design</li>
+<li>Built-in routing and middleware system</li>
+<li>Known stability (v4 has been battle-tested for years)</li>
+</ul>
+<h3><strong>node-cron</strong> (v4.2.1)</h3>
+<p>In-process cron scheduler for Node.js. Chosen because:</p>
+<ul><li>Simple syntax matching traditional cron expressions</li>
+<li>No external dependencies (no need for system cron)</li>
+<li>Precise timing control for monitoring intervals</li>
+<li>Easy to manage multiple scheduled tasks</li>
+<li>Lightweight with minimal overhead</li>
+</ul>
+<h3><strong>ssh2</strong> (v1.17.0)</h3>
+<p>Pure JavaScript SSH2 client for Node.js. Selected for:</p>
+<ul><li>Full SSH protocol implementation (auth, exec, sftp)</li>
+<li>No native dependencies (pure JS except optional crypto acceleration)</li>
+<li>Active maintenance and security updates</li>
+<li>Supports multiple authentication methods (password, key-based)</li>
+<li>Stream-based API for efficient command execution</li>
+<li>Essential for agent-less remote monitoring architecture</li>
+</ul><hr>
+
+<h2>Related Documentation</h2>
+
+<ul><li><a href="README.md">Readme</a></li>
+<li><a href="API.md">Api</a></li>
+<li><a href="DEPLOYMENT.md">Deployment</a></li>
+<li><a href="CONTRIBUTING.md">Contributing</a></li>
+</ul>
+    <div class="footer">
+      Generated by Athena &mdash; &copy; 2026 TheForge, LLC
+    </div>
+  </main>
+</body>
+</html>

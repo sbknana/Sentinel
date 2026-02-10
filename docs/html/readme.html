@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>README - sentinel</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      background: #0d1117; color: #c9d1d9; display: flex; min-height: 100vh;
+    }
+    .sidebar {
+      width: 260px; background: #161b22; border-right: 1px solid #30363d;
+      padding: 1rem 0; position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto;
+    }
+    .sidebar-header {
+      padding: 1rem 1.25rem; font-size: 1.1rem; font-weight: 700;
+      border-bottom: 1px solid #30363d; margin-bottom: 0.5rem;
+      color: #58a6ff;
+    }
+    .nav-item {
+      display: block; padding: 0.5rem 1.25rem; color: #c9d1d9;
+      text-decoration: none; font-size: 0.9rem;
+      border-left: 3px solid transparent; transition: all 0.15s;
+    }
+    .nav-item:hover { background: #1f6feb33; }
+    .nav-item.active {
+      background: #1f6feb33; border-left-color: #58a6ff; font-weight: 600;
+    }
+    .content {
+      margin-left: 260px; padding: 2rem 3rem; max-width: 900px; width: 100%;
+    }
+    h1 { font-size: 2rem; margin: 0.5em 0; border-bottom: 1px solid #30363d; padding-bottom: 0.3em; }
+    h2 { font-size: 1.5rem; margin: 1.5em 0 0.5em; border-bottom: 1px solid #30363d; padding-bottom: 0.2em; }
+    h3 { font-size: 1.25rem; margin: 1.2em 0 0.4em; }
+    h4 { font-size: 1.1rem; margin: 1em 0 0.3em; }
+    p { margin: 0.6em 0; line-height: 1.6; }
+    a { color: #58a6ff; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code {
+      background: #1c2128; padding: 0.2em 0.4em; border-radius: 4px;
+      font-family: "SFMono-Regular", Consolas, monospace; font-size: 0.85em;
+    }
+    pre {
+      background: #1c2128; padding: 1em; border-radius: 8px;
+      overflow-x: auto; margin: 1em 0; border: 1px solid #30363d;
+    }
+    pre code { background: none; padding: 0; }
+    table {
+      border-collapse: collapse; width: 100%; margin: 1em 0;
+    }
+    td, th {
+      border: 1px solid #30363d; padding: 0.5em 0.75em; text-align: left;
+    }
+    tr:nth-child(even) { background: #1c2128; }
+    ul { padding-left: 1.5em; margin: 0.5em 0; }
+    li { margin: 0.3em 0; line-height: 1.5; }
+    hr { border: none; border-top: 1px solid #30363d; margin: 2em 0; }
+    img { border: 1px solid #30363d; }
+    .mermaid { margin: 1.5em 0; }
+    .footer {
+      margin-top: 4em; padding-top: 1em; border-top: 1px solid #30363d;
+      font-size: 0.8em; opacity: 0.6;
+    }
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .content { margin-left: 0; padding: 1rem; }
+    }
+  </style>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "dark" });
+  </script>
+</head>
+<body>
+  <nav class="sidebar">
+    <div class="sidebar-header">sentinel</div>
+    <a href="api.html" class="nav-item">API</a>
+          <a href="architecture.html" class="nav-item">ARCHITECTURE</a>
+          <a href="contributing.html" class="nav-item">CONTRIBUTING</a>
+          <a href="deployment.html" class="nav-item">DEPLOYMENT</a>
+          <a href="readme.html" class="nav-item active">README</a>
+          <a href="diagrams.html" class="nav-item">DIAGRAMS</a>
+  </nav>
+  <main class="content">
+    <h1>Sentinel</h1>
+
+<h2>Table of Contents</h2>
+
+<ul><li><a href="#sentinel">Sentinel</a></li>
+</ul>  - <a href="#description">Description</a>
+  - <a href="#features">Features</a>
+  - <a href="#quick-start">Quick Start</a>
+    - <a href="#prerequisites">Prerequisites</a>
+    - <a href="#installation">Installation</a>
+<ul><li><a href="#clone-the-repository">Clone the repository</a></li>
+<li><a href="#install-dependencies">Install dependencies</a></li>
+<li><a href="#configure-environment">Configure environment</a></li>
+<li><a href="#edit-env-with-your-ssh-credentials-and-host-details">Edit .env with your SSH credentials and host details</a></li>
+<li><a href="#start-the-server">Start the server</a></li>
+</ul>  - <a href="#usage">Usage</a>
+    - <a href="#adding-a-host">Adding a Host</a>
+    - <a href="#checking-container-status">Checking Container Status</a>
+    - <a href="#creating-an-alert">Creating an Alert</a>
+    - <a href="#enabling-auto-restart-for-a-container">Enabling Auto-Restart for a Container</a>
+    - <a href="#triggering-a-manual-backup-check">Triggering a Manual Backup Check</a>
+  - <a href="#screenshots-gallery">Screenshots Gallery</a>
+  - <a href="#tech-stack">Tech Stack</a>
+    - <a href="#key-dependencies">Key Dependencies</a>
+  - <a href="#configuration">Configuration</a>
+<ul><li><a href="#server-configuration">Server Configuration</a></li>
+<li><a href="#database">Database</a></li>
+<li><a href="#ssh-configuration-defaults-for-monitored-hosts">SSH Configuration (defaults for monitored hosts)</a></li>
+<li><a href="#monitoring-intervals">Monitoring Intervals</a></li>
+<li><a href="#alert-configuration">Alert Configuration</a></li>
+</ul>    - <a href="#database-schema">Database Schema</a>
+  - <a href="#contributing">Contributing</a>
+  - <a href="#license">License</a>
+  - <a href="#related-documentation">Related Documentation</a>
+
+<p>Real-time infrastructure monitoring and alerting dashboard for distributed systems</p>
+
+<p>!<a href="docs/screenshots/hero.png">Sentinel Dashboard</a></p>
+
+<h2>Description</h2>
+
+<p>Sentinel is a comprehensive infrastructure monitoring platform designed to provide instant visibility across your entire ecosystem. Built for distributed environments, it continuously monitors VMs, Docker containers, services, and backup systems without requiring manual SSH access to individual machines.</p>
+
+<p>The system aggregates health metrics, container status, event logs, and backup verification data into a unified dashboard. With intelligent alerting and self-healing capabilities, Sentinel detects issues proactively and can automatically restart failed containers or trigger recovery procedures. It's designed to run as a centralized monitoring hub that keeps watch over all your infrastructure 24/7.</p>
+
+<p>Whether you're managing a handful of servers or a complex multi-host deployment, Sentinel provides the observability and automation needed to maintain system reliability and reduce operational overhead.</p>
+
+<h2>Features</h2>
+
+<ul><li><strong>Multi-Host Monitoring</strong> — Track status and metrics across all registered hosts from a single dashboard</li>
+<li><strong>Container Management</strong> — View, restart, and configure auto-restart policies for Docker containers</li>
+<li><strong>Real-Time Events</strong> — Streaming event log with status tracking and filtering capabilities</li>
+<li><strong>Alert Management</strong> — Create, configure, and acknowledge infrastructure alerts with notification history</li>
+<li><strong>Backup Verification</strong> — Monitor backup status and manually trigger backup checks across hosts</li>
+<li><strong>Self-Healing</strong> — Automatic container restart policies with configurable healing statistics</li>
+<li><strong>Forge Integration</strong> — Track project deployment tasks, activity, and build progress</li>
+<li><strong>SSH-Based Monitoring</strong> — Agentless monitoring using SSH connections to remote hosts</li>
+<li><strong>Health Checks</strong> — Built-in health and status endpoints for uptime monitoring</li>
+<li><strong>Persistent Storage</strong> — SQLite database for configuration, history, and alert tracking</li>
+</ul>
+<h2>Quick Start</h2>
+
+<h3>Prerequisites</h3>
+
+<ul><li>Node.js 18+ installed</li>
+<li>SSH access to monitored hosts</li>
+<li>SQLite3 (bundled with better-sqlite3)</li>
+</ul>
+<h3>Installation</h3>
+
+<pre><code class="language-bash"># Clone the repository
+<p>git clone &lt;repository-url&gt;</p>
+<p>cd sentinel</p>
+
+<h1>Install dependencies</h1>
+<p>npm install</p>
+
+<h1>Configure environment</h1>
+<p>cp .env.example .env</p>
+<h1>Edit .env with your SSH credentials and host details</h1>
+
+<h1>Start the server</h1>
+<p>npm start</p>
+</code></pre>
+
+<p>The dashboard will be available at <code>http://localhost:3000</code> (or your configured port).</p>
+
+<h2>Usage</h2>
+
+<h3>Adding a Host</h3>
+
+<pre><code class="language-bash">curl -X POST http://localhost:3000/api/status/hosts \
+  -H "Content-Type: application/json" \
+  -d '{
+    "hostname": "example-host",
+    "ip": "192.168.1.10",
+    "sshUser": "admin",
+    "sshKey": "/path/to/key"
+  }'
+</code></pre>
+
+<h3>Checking Container Status</h3>
+
+<pre><code class="language-javascript">// Get all containers for a specific host
+<p>fetch('/api/containers/host-123')</p>
+  .then(res =&gt; res.json())
+  .then(containers =&gt; console.log(containers));
+</code></pre>
+
+<h3>Creating an Alert</h3>
+
+<pre><code class="language-bash">curl -X POST http://localhost:3000/api/alerts \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "container_down",
+    "severity": "high",
+    "message": "Container nginx-proxy is not running",
+    "hostId": "host-123"
+  }'
+</code></pre>
+
+<h3>Enabling Auto-Restart for a Container</h3>
+
+<pre><code class="language-bash">curl -X PUT http://localhost:3000/api/containers/host-123/nginx-proxy/auto-restart \
+  -H "Content-Type: application/json" \
+  -d '{"enabled": true}'
+</code></pre>
+
+<h3>Triggering a Manual Backup Check</h3>
+
+<pre><code class="language-bash">curl -X POST http://localhost:3000/api/backups/check \
+  -H "Content-Type: application/json" \
+  -d '{"hostId": "host-123"}'
+</code></pre>
+
+<h2>Screenshots Gallery</h2>
+
+<p>_No additional screenshots provided_</p>
+
+<h2>Tech Stack</h2>
+
+<ul><li><strong>Backend Framework:</strong> Express.js 4.21</li>
+<li><strong>Language:</strong> JavaScript (Node.js)</li>
+<li><strong>Database:</strong> SQLite3 (via better-sqlite3)</li>
+<li><strong>SSH Client:</strong> ssh2 for agentless monitoring</li>
+<li><strong>Task Scheduling:</strong> node-cron for periodic checks</li>
+<li><strong>Runtime:</strong> Node.js 18+</li>
+</ul>
+<h3>Key Dependencies</h3>
+
+<ul><li><code>express</code> — Web framework and API routing</li>
+<li><code>better-sqlite3</code> — High-performance SQLite database</li>
+<li><code>ssh2</code> — SSH2 protocol client for remote command execution</li>
+<li><code>node-cron</code> — Cron-based task scheduler for monitoring jobs</li>
+</ul>
+<h2>Configuration</h2>
+
+<p>Sentinel uses environment variables for configuration. Create a <code>.env</code> file in the project root:</p>
+
+<pre><code class="language-bash"># Server Configuration
+<p>PORT=3000</p>
+<p>HOST=0.0.0.0</p>
+
+<h1>Database</h1>
+<p>DB_PATH=./data/sentinel.db</p>
+
+<h1>SSH Configuration (defaults for monitored hosts)</h1>
+<p>SSH_USER=admin</p>
+<p>SSH_KEY_PATH=/path/to/ssh/key</p>
+<p>SSH_PORT=22</p>
+
+<h1>Monitoring Intervals</h1>
+<p>CONTAINER_CHECK_INTERVAL=60000  # milliseconds</p>
+<p>BACKUP_CHECK_INTERVAL=3600000   # 1 hour</p>
+<p>HEALING_CHECK_INTERVAL=300000   # 5 minutes</p>
+
+<h1>Alert Configuration</h1>
+<p>ALERT_RETENTION_DAYS=30</p>
+</code></pre>
+
+<h3>Database Schema</h3>
+
+<p>The SQLite database is automatically initialized on first run. It includes tables for:</p>
+
+<ul><li><code>hosts</code> — Registered monitoring targets</li>
+<li><code>alerts</code> — Alert definitions and history</li>
+<li><code>events</code> — System event log</li>
+<li><code>config</code> — Application configuration</li>
+<li><code>healing_stats</code> — Self-healing action history</li>
+</ul>
+<h2>Contributing</h2>
+
+<p>Contributions are welcome! Please see <a href="CONTRIBUTING.md">CONTRIBUTING.md</a> for guidelines on submitting issues, feature requests, and pull requests.</p>
+
+<h2>License</h2>
+
+<p>Copyright © 2026 TheForge, LLC. All rights reserved.</p>
+<hr>
+
+<h2>Related Documentation</h2>
+
+<ul><li><a href="ARCHITECTURE.md">Architecture</a></li>
+<li><a href="API.md">Api</a></li>
+<li><a href="DEPLOYMENT.md">Deployment</a></li>
+<li><a href="CONTRIBUTING.md">Contributing</a></li>
+</ul>
+    <div class="footer">
+      Generated by Athena &mdash; &copy; 2026 TheForge, LLC
+    </div>
+  </main>
+</body>
+</html>

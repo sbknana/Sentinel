@@ -1,0 +1,36 @@
+sequenceDiagram
+  participant Client
+  participant Handler
+  participant Database
+
+  Note over Client,Database: USE /api
+  Client->>+Handler: USE /api
+  Handler->>+Database: query
+  Database-->>-Handler: result
+  Handler-->>-Client: HTTP response
+
+  Note over Client,Database: USE /api/containers
+  Client->>+Handler: USE /api/containers
+  Handler->>+Database: query
+  Database-->>-Handler: result
+  Handler-->>-Client: HTTP response
+
+  Note over Client,Database: USE /api/alerts
+  Client->>+Handler: USE /api/alerts
+  Handler->>+Database: query
+  Database-->>-Handler: result
+  Handler-->>-Client: HTTP response
+
+  Note over Client,Database: USE /api/backups
+  Client->>+Handler: USE /api/backups
+  Handler->>+Database: query
+  Database-->>-Handler: result
+  Handler-->>-Client: HTTP response
+
+  Note over Client,Database: USE /api/config
+  Client->>+Handler: USE /api/config
+  Handler->>+Database: query
+  Database-->>-Handler: result
+  Handler-->>-Client: HTTP response
+
+  Note over Client,Database: ... +31 more endpoints
