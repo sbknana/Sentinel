@@ -3,210 +3,273 @@
 ## Table of Contents
 
 - [Sentinel](#sentinel)
-  - [Description](#description)
-  - [Features](#features)
+  - [What is this?](#what-is-this)
+  - [Screenshots](#screenshots)
   - [Quick Start](#quick-start)
+  - [How to Use](#how-to-use)
+    - [Viewing Your Infrastructure](#viewing-your-infrastructure)
+    - [Monitoring Active Work](#monitoring-active-work)
+    - [Tracking Projects](#tracking-projects)
+    - [Reviewing History](#reviewing-history)
+    - [Managing Alerts](#managing-alerts)
+    - [Restarting Containers](#restarting-containers)
+  - [Features](#features)
+  - [Installation](#installation)
     - [Prerequisites](#prerequisites)
-    - [Installation](#installation)
-- [Clone the repository](#clone-the-repository)
-- [Install dependencies](#install-dependencies)
-- [Configure environment](#configure-environment)
-- [Edit .env with your SSH credentials and host details](#edit-env-with-your-ssh-credentials-and-host-details)
-- [Start the server](#start-the-server)
-  - [Usage](#usage)
-    - [Adding a Host](#adding-a-host)
-    - [Checking Container Status](#checking-container-status)
-    - [Creating an Alert](#creating-an-alert)
-    - [Enabling Auto-Restart for a Container](#enabling-auto-restart-for-a-container)
-    - [Triggering a Manual Backup Check](#triggering-a-manual-backup-check)
-  - [Screenshots Gallery](#screenshots-gallery)
-  - [Tech Stack](#tech-stack)
-    - [Key Dependencies](#key-dependencies)
+    - [Detailed Setup](#detailed-setup)
+    - [Running in Production](#running-in-production)
   - [Configuration](#configuration)
-- [Server Configuration](#server-configuration)
-- [Database](#database)
-- [SSH Configuration (defaults for monitored hosts)](#ssh-configuration-defaults-for-monitored-hosts)
-- [Monitoring Intervals](#monitoring-intervals)
-- [Alert Configuration](#alert-configuration)
-    - [Database Schema](#database-schema)
-  - [Contributing](#contributing)
+    - [Host Configuration](#host-configuration)
+    - [Environment Variables](#environment-variables)
+    - [Alert Thresholds](#alert-thresholds)
+  - [Tech Stack](#tech-stack)
   - [License](#license)
-  - [Related Documentation](#related-documentation)
 
-Real-time infrastructure monitoring and alerting dashboard for distributed systems
+Real-time infrastructure monitoring for your entire server fleet — see everything that's happening across all your VMs, Docker containers, and background tasks in one place.
 
-![Sentinel Dashboard](docs/screenshots/hero.png)
+![Sentinel Dashboard](screenshots/dashboard-overview.png)
 
-## Description
+## What is this?
 
-Sentinel is a comprehensive infrastructure monitoring platform designed to provide instant visibility across your entire ecosystem. Built for distributed environments, it continuously monitors VMs, Docker containers, services, and backup systems without requiring manual SSH access to individual machines.
+Sentinel is a monitoring dashboard that watches over your infrastructure 24/7. Instead of SSHing into each server to check if things are running, you get a single web interface showing the health of all your hosts, containers, services, and automated tasks. It's designed for small teams running multiple VMs who need instant visibility without the complexity of enterprise monitoring tools.
 
-The system aggregates health metrics, container status, event logs, and backup verification data into a unified dashboard. With intelligent alerting and self-healing capabilities, Sentinel detects issues proactively and can automatically restart failed containers or trigger recovery procedures. It's designed to run as a centralized monitoring hub that keeps watch over all your infrastructure 24/7.
+## Screenshots
 
-Whether you're managing a handful of servers or a complex multi-host deployment, Sentinel provides the observability and automation needed to maintain system reliability and reduce operational overhead.
+![Main Dashboard](screenshots/dashboard-wide.png)
+*The main dashboard gives you an at-a-glance view of all your infrastructure — host status, CPU/memory usage, and running containers*
 
-## Features
+![Active Tasks](screenshots/tab-active-tasks.png)
+*See what's currently running across your infrastructure — deployments, backups, and automated maintenance tasks*
 
-- **Multi-Host Monitoring** — Track status and metrics across all registered hosts from a single dashboard
-- **Container Management** — View, restart, and configure auto-restart policies for Docker containers
-- **Real-Time Events** — Streaming event log with status tracking and filtering capabilities
-- **Alert Management** — Create, configure, and acknowledge infrastructure alerts with notification history
-- **Backup Verification** — Monitor backup status and manually trigger backup checks across hosts
-- **Self-Healing** — Automatic container restart policies with configurable healing statistics
-- **Forge Integration** — Track project deployment tasks, activity, and build progress
-- **SSH-Based Monitoring** — Agentless monitoring using SSH connections to remote hosts
-- **Health Checks** — Built-in health and status endpoints for uptime monitoring
-- **Persistent Storage** — SQLite database for configuration, history, and alert tracking
+![Projects Overview](screenshots/tab-projects.png)
+*Track progress across all your projects with completion rates and task counts*
+
+![Recent Activity](screenshots/tab-recent-activity.png)
+*A live feed of everything happening in your infrastructure — deployments, restarts, backups, and alerts*
+
+![Open Questions](screenshots/tab-open-questions.png)
+*Track unresolved issues and questions that need attention across your projects*
 
 ## Quick Start
 
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd sentinel
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Set up your configuration**
+   ```bash
+   cp config.example.json config.json
+   # Edit config.json with your host details
+   ```
+
+4. **Start the server**
+   ```bash
+   npm start
+   ```
+
+5. **Open your browser**
+   ```
+   http://localhost:3000
+   ```
+
+That's it! The dashboard will start collecting metrics from your configured hosts immediately.
+
+## How to Use
+
+### Viewing Your Infrastructure
+
+When you open Sentinel, the **main dashboard** shows you everything at once:
+- **Host Status** panel lists all your VMs with their uptime and current state
+- **System Metrics** displays live CPU, memory, and disk usage graphs
+- **Container Overview** shows which Docker containers are running on each host
+
+Click any host to drill down into detailed metrics and container logs.
+
+### Monitoring Active Work
+
+Switch to the **Active Tasks** tab to see what's currently happening:
+- Running deployments and their progress
+- Scheduled backup jobs
+- Automated maintenance tasks
+- Container restarts and health checks
+
+Each task shows a real-time status indicator and elapsed time.
+
+### Tracking Projects
+
+The **Projects** tab gives you a birds-eye view of all ongoing work:
+- See how many tasks are running vs. completed for each project
+- Click a project to filter the activity feed
+- Check completion percentages to spot bottlenecks
+
+### Reviewing History
+
+The **Recent Activity** feed is your infrastructure's event log:
+- Every deployment, restart, backup, and alert is timestamied
+- Filter by host, project, or event type
+- Click any event to see full details and logs
+
+### Managing Alerts
+
+Sentinel automatically creates alerts when something needs your attention:
+- Container crashes or failed health checks
+- Disk space running low
+- Services that have been down too long
+- Failed backup jobs
+
+Acknowledge alerts from the dashboard to track what you've addressed.
+
+### Restarting Containers
+
+Need to restart a container? Click the container name in the dashboard, then hit the **Restart** button. You can also enable **Auto-Restart** to automatically recover from crashes.
+
+## Features
+
+- **Real-time monitoring** — see updates as they happen, no page refresh needed
+- **Multi-host management** — track dozens of VMs from a single dashboard
+- **Container visibility** — know which Docker containers are running where
+- **Task orchestration** — watch automated deployments and maintenance tasks
+- **Smart alerting** — get notified when something actually needs your attention
+- **Activity timeline** — complete audit log of infrastructure changes
+- **SSH-based collection** — no agents to install on your servers
+- **Backup tracking** — verify your backup jobs are running on schedule
+- **One-click restarts** — quickly recover containers without SSHing
+
+## Installation
+
 ### Prerequisites
 
-- Node.js 18+ installed
-- SSH access to monitored hosts
-- SQLite3 (bundled with better-sqlite3)
+- **Node.js** 18 or higher
+- **SSH access** to the hosts you want to monitor
+- **SSH keys** configured for passwordless login
 
-### Installation
+### Detailed Setup
 
-```bash
-# Clone the repository
-git clone <repository-url>
-cd sentinel
+1. **Clone and install**
+   ```bash
+   git clone <repository-url>
+   cd sentinel
+   npm install
+   ```
 
-# Install dependencies
-npm install
+2. **Create your config file**
+   ```bash
+   cp config.example.json config.json
+   ```
 
-# Configure environment
-cp .env.example .env
-# Edit .env with your SSH credentials and host details
+3. **Add your hosts to config.json**
+   ```json
+   {
+     "hosts": [
+       {
+         "id": "web-01",
+         "name": "Web Server 01",
+         "hostname": "192.168.1.10",
+         "port": 22,
+         "username": "admin"
+       }
+     ]
+   }
+   ```
 
-# Start the server
-npm start
-```
+4. **Set up SSH keys**
+   
+   Sentinel needs passwordless SSH access to collect metrics:
+   ```bash
+   ssh-keygen -t ed25519 -f ~/.ssh/sentinel
+   ssh-copy-id -i ~/.ssh/sentinel.pub admin@192.168.1.10
+   ```
 
-The dashboard will be available at `http://localhost:3000` (or your configured port).
+5. **Configure SSH key path**
+   
+   If using a non-default key location, set the environment variable:
+   ```bash
+   export SSH_KEY_PATH=~/.ssh/sentinel
+   ```
 
-## Usage
+6. **Start the server**
+   ```bash
+   npm start
+   ```
 
-### Adding a Host
+   For development with auto-reload:
+   ```bash
+   npm run dev
+   ```
 
-```bash
-curl -X POST http://localhost:3000/api/status/hosts \
-  -H "Content-Type: application/json" \
-  -d '{
-    "hostname": "example-host",
-    "ip": "192.168.1.10",
-    "sshUser": "admin",
-    "sshKey": "/path/to/key"
-  }'
-```
+7. **Verify it's working**
+   
+   Open http://localhost:3000/health — you should see `{"status":"ok"}`
 
-### Checking Container Status
+### Running in Production
 
-```javascript
-// Get all containers for a specific host
-fetch('/api/containers/host-123')
-  .then(res => res.json())
-  .then(containers => console.log(containers));
-```
-
-### Creating an Alert
-
-```bash
-curl -X POST http://localhost:3000/api/alerts \
-  -H "Content-Type: application/json" \
-  -d '{
-    "type": "container_down",
-    "severity": "high",
-    "message": "Container nginx-proxy is not running",
-    "hostId": "host-123"
-  }'
-```
-
-### Enabling Auto-Restart for a Container
-
-```bash
-curl -X PUT http://localhost:3000/api/containers/host-123/nginx-proxy/auto-restart \
-  -H "Content-Type: application/json" \
-  -d '{"enabled": true}'
-```
-
-### Triggering a Manual Backup Check
+For production deployments, use a process manager like PM2:
 
 ```bash
-curl -X POST http://localhost:3000/api/backups/check \
-  -H "Content-Type: application/json" \
-  -d '{"hostId": "host-123"}'
+npm install -g pm2
+pm2 start src/server.js --name sentinel
+pm2 save
+pm2 startup
 ```
-
-## Screenshots Gallery
-
-_No additional screenshots provided_
-
-## Tech Stack
-
-- **Backend Framework:** Express.js 4.21
-- **Language:** JavaScript (Node.js)
-- **Database:** SQLite3 (via better-sqlite3)
-- **SSH Client:** ssh2 for agentless monitoring
-- **Task Scheduling:** node-cron for periodic checks
-- **Runtime:** Node.js 18+
-
-### Key Dependencies
-
-- `express` — Web framework and API routing
-- `better-sqlite3` — High-performance SQLite database
-- `ssh2` — SSH2 protocol client for remote command execution
-- `node-cron` — Cron-based task scheduler for monitoring jobs
 
 ## Configuration
 
-Sentinel uses environment variables for configuration. Create a `.env` file in the project root:
+### Host Configuration
 
-```bash
-# Server Configuration
-PORT=3000
-HOST=0.0.0.0
+Each host in `config.json` supports these options:
 
-# Database
-DB_PATH=./data/sentinel.db
-
-# SSH Configuration (defaults for monitored hosts)
-SSH_USER=admin
-SSH_KEY_PATH=/path/to/ssh/key
-SSH_PORT=22
-
-# Monitoring Intervals
-CONTAINER_CHECK_INTERVAL=60000  # milliseconds
-BACKUP_CHECK_INTERVAL=3600000   # 1 hour
-HEALING_CHECK_INTERVAL=300000   # 5 minutes
-
-# Alert Configuration
-ALERT_RETENTION_DAYS=30
+```json
+{
+  "id": "unique-identifier",
+  "name": "Human-friendly name",
+  "hostname": "IP or domain",
+  "port": 22,
+  "username": "ssh-user",
+  "tags": ["production", "web"],
+  "checkInterval": 30
+}
 ```
 
-### Database Schema
+- `checkInterval`: How often to collect metrics (seconds, default: 30)
+- `tags`: For filtering and grouping hosts in the dashboard
 
-The SQLite database is automatically initialized on first run. It includes tables for:
+### Environment Variables
 
-- `hosts` — Registered monitoring targets
-- `alerts` — Alert definitions and history
-- `events` — System event log
-- `config` — Application configuration
-- `healing_stats` — Self-healing action history
+- `PORT` — Server port (default: 3000)
+- `SSH_KEY_PATH` — Path to SSH private key (default: ~/.ssh/id_rsa)
+- `DB_PATH` — SQLite database location (default: ./data/sentinel.db)
+- `LOG_LEVEL` — Logging verbosity: error, warn, info, debug
 
-## Contributing
+### Alert Thresholds
 
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on submitting issues, feature requests, and pull requests.
+Edit alert rules in `config.json`:
+
+```json
+{
+  "alerts": {
+    "cpu_threshold": 90,
+    "memory_threshold": 85,
+    "disk_threshold": 90,
+    "container_down_minutes": 5
+  }
+}
+```
+
+## Tech Stack
+
+- **Backend**: Express.js + Node.js
+- **Database**: SQLite (better-sqlite3)
+- **SSH**: ssh2 for remote metric collection
+- **Scheduling**: node-cron for periodic checks
+- **Frontend**: Vanilla JavaScript (no framework dependencies)
 
 ## License
 
-Copyright © 2026 TheForge, LLC. All rights reserved.
----
-
-## Related Documentation
-
-- [Architecture](ARCHITECTURE.md)
-- [Api](API.md)
-- [Deployment](DEPLOYMENT.md)
-- [Contributing](CONTRIBUTING.md)
+Copyright © 2026, TheForge, LLC. All rights reserved.

@@ -1,0 +1,54 @@
+{
+  "screenshots": [
+    {
+      "path": "dashboard-overview.png",
+      "route": "/",
+      "viewport": "desktop",
+      "theme": "dark",
+      "description": "Main dashboard showing host status, system metrics, and container overview"
+    },
+    {
+      "path": "tab-active-tasks.png",
+      "route": "/",
+      "viewport": "desktop",
+      "theme": "dark",
+      "description": "Active Tasks tab showing running ForgeTeam tasks and orchestrator status"
+    },
+    {
+      "path": "tab-projects.png",
+      "route": "/",
+      "viewport": "desktop",
+      "theme": "dark",
+      "description": "Projects tab with task counts and completion status per project"
+    },
+    {
+      "path": "tab-recent-activity.png",
+      "route": "/",
+      "viewport": "desktop",
+      "theme": "dark",
+      "description": "Recent Activity feed showing deployments, backups, and system events"
+    },
+    {
+      "path": "tab-open-questions.png",
+      "route": "/",
+      "viewport": "desktop",
+      "theme": "dark",
+      "description": "Open Questions tab tracking unresolved items across projects"
+    },
+    {
+      "path": "dashboard-wide.png",
+      "route": "/",
+      "viewport": "wide",
+      "theme": "dark",
+      "description": "Full-width dashboard view showing all monitoring panels"
+    }
+  ],
+  "capturedAt": "2026-02-10T09:33:00Z",
+  "viewports": [
+    "desktop",
+    "wide"
+  ],
+  "themes": [
+    "dark"
+  ]
+}
