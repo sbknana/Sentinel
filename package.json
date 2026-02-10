@@ -13,7 +13,7 @@
     "dashboard"
   ],
   "author": "TheForge, LLC",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "copyright": "Copyright 2026, TheForge, LLC",
   "dependencies": {
     "better-sqlite3": "^11.0.0",
