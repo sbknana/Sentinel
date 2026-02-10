@@ -3,33 +3,56 @@ const { execFile } = require('child_process');
 const { getDb } = require('../db');
 const config = require('../config');
 const { broadcast } = require('../sse');
+const { execOnHost } = require('../ssh');
 
 const RESTIC_TIMEOUT_MS = 30000;
 
 /**
- * Run restic snapshots for a given repo and return the latest snapshot time.
+ * Build environment variables for a restic command based on backup config.
+ */
+function buildResticEnv(backupConfig) {
+  const env = { ...process.env };
+  const envKey = `RESTIC_PASSWORD_${backupConfig.name.toUpperCase().replace(/-/g, '_')}`;
+  if (process.env[envKey]) {
+    env.RESTIC_PASSWORD = process.env[envKey];
+  } else if (backupConfig.password_file) {
+    env.RESTIC_PASSWORD_FILE = backupConfig.password_file;
+  }
+  if (backupConfig.aws_access_key_id) {
+    env.AWS_ACCESS_KEY_ID = backupConfig.aws_access_key_id;
+  }
+  if (backupConfig.aws_secret_access_key) {
+    env.AWS_SECRET_ACCESS_KEY = backupConfig.aws_secret_access_key;
+  }
+  return env;
+}
+
+/**
+ * Parse restic snapshots JSON output into a result object.
+ */
+function parseResticOutput(stdout) {
+  const snapshots = JSON.parse(stdout);
+  if (!snapshots || snapshots.length === 0) {
+    return { error: false, lastSuccess: null, details: 'No snapshots found in repository' };
+  }
+  const latest = snapshots[0];
+  const lastSuccess = latest.time; // ISO 8601 timestamp from restic
+  const hostname = latest.hostname || 'unknown';
+  const paths = (latest.paths || []).join(', ');
+  return {
+    error: false,
+    lastSuccess,
+    details: `host=${hostname} paths=${paths}`,
+  };
+}
+
+/**
+ * Run restic snapshots locally and return the latest snapshot time.
  * Returns { lastSuccess, details } or { error, details }.
  */
-function checkResticRepo(backupConfig) {
+function checkResticLocal(backupConfig) {
   return new Promise((resolve) => {
-    const env = { ...process.env };
-
-    // Support password from config or env var named RESTIC_PASSWORD_<NAME>
-    const envKey = `RESTIC_PASSWORD_${backupConfig.name.toUpperCase().replace(/-/g, '_')}`;
-    if (process.env[envKey]) {
-      env.RESTIC_PASSWORD = process.env[envKey];
-    } else if (backupConfig.password_file) {
-      env.RESTIC_PASSWORD_FILE = backupConfig.password_file;
-    }
-
-    // Support S3/REST/SFTP backends via env vars
-    if (backupConfig.aws_access_key_id) {
-      env.AWS_ACCESS_KEY_ID = backupConfig.aws_access_key_id;
-    }
-    if (backupConfig.aws_secret_access_key) {
-      env.AWS_SECRET_ACCESS_KEY = backupConfig.aws_secret_access_key;
-    }
-
+    const env = buildResticEnv(backupConfig);
     const args = ['snapshots', '--repo', backupConfig.repo_path, '--json', '--latest', '1'];
 
     execFile('restic', args, { timeout: RESTIC_TIMEOUT_MS, env }, (err, stdout, stderr) => {
@@ -38,28 +61,65 @@ function checkResticRepo(backupConfig) {
         resolve({ error: true, details: msg });
         return;
       }
-
       try {
-        const snapshots = JSON.parse(stdout);
-        if (!snapshots || snapshots.length === 0) {
-          resolve({ error: false, lastSuccess: null, details: 'No snapshots found in repository' });
-          return;
-        }
-
-        const latest = snapshots[0];
-        const lastSuccess = latest.time; // ISO 8601 timestamp from restic
-        const hostname = latest.hostname || 'unknown';
-        const paths = (latest.paths || []).join(', ');
-        resolve({
-          error: false,
-          lastSuccess,
-          details: `host=${hostname} paths=${paths}`,
-        });
+        resolve(parseResticOutput(stdout));
       } catch (parseErr) {
         resolve({ error: true, details: `Failed to parse restic output: ${parseErr.message}` });
       }
     });
   });
+}
+
+/**
+ * Run restic snapshots on a remote host via SSH and return the latest snapshot time.
+ * The backup config must have a `check_host` field matching a host name in the hosts table.
+ * This is used when the restic repo is only accessible from a specific host
+ * (e.g., a Windows box that stores backups locally).
+ */
+async function checkResticRemote(backupConfig, host) {
+  // Build the restic command to run on the remote host.
+  // Environment variables for passwords are set via the shell command.
+  const envParts = [];
+  const envKey = `RESTIC_PASSWORD_${backupConfig.name.toUpperCase().replace(/-/g, '_')}`;
+  if (process.env[envKey]) {
+    envParts.push(`RESTIC_PASSWORD='${process.env[envKey].replace(/'/g, "'\\''")}'`);
+  } else if (backupConfig.password_file) {
+    envParts.push(`RESTIC_PASSWORD_FILE='${backupConfig.password_file}'`);
+  }
+  if (backupConfig.aws_access_key_id) {
+    envParts.push(`AWS_ACCESS_KEY_ID='${backupConfig.aws_access_key_id}'`);
+  }
+  if (backupConfig.aws_secret_access_key) {
+    envParts.push(`AWS_SECRET_ACCESS_KEY='${backupConfig.aws_secret_access_key}'`);
+  }
+
+  const envPrefix = envParts.length > 0 ? envParts.join(' ') + ' ' : '';
+  const cmd = `${envPrefix}restic snapshots --repo '${backupConfig.repo_path}' --json --latest 1`;
+
+  try {
+    const stdout = await execOnHost(host, cmd, RESTIC_TIMEOUT_MS);
+    return parseResticOutput(stdout);
+  } catch (err) {
+    return { error: true, details: err.message };
+  }
+}
+
+/**
+ * Run restic snapshots for a given repo and return the latest snapshot time.
+ * If `check_host` is set, runs the check on that host via SSH.
+ * Otherwise runs locally.
+ * Returns { lastSuccess, details } or { error, details }.
+ */
+async function checkResticRepo(backupConfig) {
+  if (backupConfig.check_host) {
+    const db = getDb();
+    const host = db.prepare('SELECT * FROM hosts WHERE name = ? AND enabled = 1').get(backupConfig.check_host);
+    if (!host) {
+      return { error: true, details: `check_host "${backupConfig.check_host}" not found or disabled` };
+    }
+    return checkResticRemote(backupConfig, host);
+  }
+  return checkResticLocal(backupConfig);
 }
 
 /**
@@ -107,12 +167,18 @@ async function collectBackupStatus() {
       details = result.details;
     }
 
-    // Update the backups table
+    // Update the backups table (current status)
     db.prepare(`
       UPDATE backups
       SET last_check = ?, last_success = ?, status = ?, details = ?
       WHERE name = ?
     `).run(now, lastSuccess, status, details, backupConfig.name);
+
+    // Log to backup_history for trend tracking
+    db.prepare(`
+      INSERT INTO backup_history (backup_name, checked_at, status, last_success, details)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(backupConfig.name, now, status, lastSuccess, details);
 
     const entry = { name: backupConfig.name, status, lastSuccess, lastCheck: now, details, staleHours };
     results.push(entry);

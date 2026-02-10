@@ -1,5 +1,5 @@
 {
-    "port": 3000,
+    "port": 3002,
     "collection_interval_seconds": 30,
     "theforge_db_path": "/srv/forge-share/AI_Stuff/TheForge/theforge.db",
     "hosts": [
@@ -23,12 +23,42 @@
         }
     ],
     "default_alerts": [
-        { "metric": "disk_percent", "operator": ">", "threshold": 90, "severity": "critical" },
-        { "metric": "memory_percent", "operator": ">", "threshold": 85, "severity": "warning" },
-        { "metric": "cpu_percent", "operator": ">", "threshold": 95, "severity": "warning" },
-        { "metric": "backup_stale", "operator": ">", "threshold": 24, "severity": "warning" },
-        { "metric": "service_down", "operator": "==", "threshold": 0, "severity": "critical" },
-        { "metric": "container_down", "operator": "==", "threshold": 0, "severity": "critical" }
+        {
+            "metric": "disk_percent",
+            "operator": ">",
+            "threshold": 90,
+            "severity": "critical"
+        },
+        {
+            "metric": "memory_percent",
+            "operator": ">",
+            "threshold": 85,
+            "severity": "warning"
+        },
+        {
+            "metric": "cpu_percent",
+            "operator": ">",
+            "threshold": 95,
+            "severity": "warning"
+        },
+        {
+            "metric": "backup_stale",
+            "operator": ">",
+            "threshold": 24,
+            "severity": "warning"
+        },
+        {
+            "metric": "service_down",
+            "operator": "==",
+            "threshold": 0,
+            "severity": "critical"
+        },
+        {
+            "metric": "container_down",
+            "operator": "==",
+            "threshold": 0,
+            "severity": "critical"
+        }
     ],
     "retention": {
         "metrics_full_days": 7,
@@ -40,14 +70,18 @@
         {
             "name": "local-restic",
             "type": "restic",
-            "repo_path": "/path/to/restic/repo",
-            "stale_hours": 24
+            "description": "Local backups to Windows box",
+            "repo_path": "/mnt/backup-windows/claudinator-backups",
+            "password_file": "/home/user/.restic-password",
+            "stale_hours": 26
         },
         {
             "name": "offsite-linode",
             "type": "restic",
-            "repo_path": "sftp:user@linode-host:/path/to/restic/repo",
-            "stale_hours": 24
+            "description": "Offsite backups to Linode via SFTP",
+            "repo_path": "sftp:root@45.79.183.67:/backups/claudinator",
+            "password_file": "/home/user/.restic-password",
+            "stale_hours": 26
         }
     ]
 }

@@ -108,10 +108,20 @@ function initSchema() {
       executed_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS backup_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      backup_name TEXT NOT NULL,
+      checked_at TEXT NOT NULL DEFAULT (datetime('now')),
+      status TEXT NOT NULL,
+      last_success TEXT,
+      details TEXT
+    );
+
     CREATE INDEX IF NOT EXISTS idx_metrics_host_time ON metrics(host_id, collected_at);
     CREATE INDEX IF NOT EXISTS idx_containers_host_time ON containers(host_id, collected_at);
     CREATE INDEX IF NOT EXISTS idx_alert_history_fired ON alert_history(fired_at);
     CREATE INDEX IF NOT EXISTS idx_healing_log_time ON healing_log(executed_at);
+    CREATE INDEX IF NOT EXISTS idx_backup_history_time ON backup_history(backup_name, checked_at);
   `);
 }
 
