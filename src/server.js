@@ -1,4 +1,4 @@
-// Copyright 2026, TheForge, LLC
+// Copyright 2026, Forgeborn
 const express = require('express');
 const path = require('path');
 const config = require('./config');
@@ -12,6 +12,7 @@ const configRoutes = require('./routes/configRoute');
 const eventsRoutes = require('./routes/events');
 const forgeRoutes = require('./routes/forge');
 const healingRoutes = require('./routes/healing');
+const guardRoutes = require('./routes/guard');
 const scheduler = require('./scheduler');
 
 const app = express();
@@ -29,6 +30,7 @@ app.use('/api/config', configRoutes);
 app.use('/api/events', eventsRoutes);
 app.use('/api/forge', forgeRoutes);
 app.use('/api/healing', healingRoutes);
+app.use('/api/guard', guardRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
