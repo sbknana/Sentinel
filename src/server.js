@@ -14,6 +14,7 @@ const forgeRoutes = require('./routes/forge');
 const healingRoutes = require('./routes/healing');
 const guardRoutes = require('./routes/guard');
 const reconRoutes = require('./routes/recon');
+const voiceRoutes = require('./routes/voice');
 const scheduler = require('./scheduler');
 
 const app = express();
@@ -33,6 +34,7 @@ app.use('/api/forge', forgeRoutes);
 app.use('/api/healing', healingRoutes);
 app.use('/api/guard', guardRoutes);
 app.use('/api/recon', reconRoutes);
+app.use('/api/voice', voiceRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
