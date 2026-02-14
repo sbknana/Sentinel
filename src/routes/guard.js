@@ -1,5 +1,7 @@
 // Copyright 2026, Forgeborn
 const express = require('express');
+const tls = require('tls');
+const net = require('net');
 const { execFile } = require('child_process');
 const { getDb } = require('../db');
 const config = require('../config');
@@ -7,7 +9,34 @@ const { execOnHost } = require('../ssh');
 
 const router = express.Router();
 
-// --- Helpers ---
+// ============================================================
+// CACHE — 60 second TTL to avoid hammering servers
+// ============================================================
+
+const cache = new Map();
+const CACHE_TTL_MS = 60 * 1000;
+
+function getCached(key) {
+  const entry = cache.get(key);
+  if (entry && Date.now() - entry.ts < CACHE_TTL_MS) return entry.data;
+  return null;
+}
+
+function setCache(key, data) {
+  cache.set(key, { data, ts: Date.now() });
+}
+
+async function cachedFetch(key, fetchFn) {
+  const hit = getCached(key);
+  if (hit) return hit;
+  const data = await fetchFn();
+  setCache(key, data);
+  return data;
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
 
 function execLocal(command, timeoutMs = 15000) {
   return new Promise((resolve, reject) => {
@@ -18,7 +47,9 @@ function execLocal(command, timeoutMs = 15000) {
   });
 }
 
-// --- SSL Certificate Checks ---
+// ============================================================
+// SSL CERTIFICATE CHECKS — using tls.connect()
+// ============================================================
 
 const DOMAINS = [
   'loom.forgeborn.dev',
@@ -26,34 +57,116 @@ const DOMAINS = [
   'forgeborn.dev',
 ];
 
-async function checkSSLCert(domain) {
-  try {
-    const cmd = `echo | openssl s_client -servername ${domain} -connect ${domain}:443 2>/dev/null | openssl x509 -noout -dates -subject 2>/dev/null`;
-    const output = await execLocal(cmd, 10000);
-    const lines = output.split('\n');
-    let notBefore = null, notAfter = null, subject = '';
-    for (const line of lines) {
-      if (line.startsWith('notBefore=')) notBefore = line.split('=').slice(1).join('=');
-      if (line.startsWith('notAfter=')) notAfter = line.split('=').slice(1).join('=');
-      if (line.startsWith('subject=')) subject = line.split('=').slice(1).join('=').trim();
-    }
-    const expiresDate = notAfter ? new Date(notAfter) : null;
-    const now = new Date();
-    const daysLeft = expiresDate ? Math.floor((expiresDate - now) / (1000 * 60 * 60 * 24)) : null;
-    let status = 'green';
-    if (daysLeft !== null) {
-      if (daysLeft <= 7) status = 'red';
-      else if (daysLeft <= 30) status = 'yellow';
-    } else {
-      status = 'red';
-    }
-    return { domain, status, days_left: daysLeft, expires: notAfter, issued: notBefore, subject };
-  } catch (e) {
-    return { domain, status: 'red', days_left: null, expires: null, issued: null, subject: '', error: e.message };
-  }
+function checkSSLCert(domain) {
+  return new Promise((resolve) => {
+    const socket = tls.connect(443, domain, { servername: domain, rejectUnauthorized: false }, () => {
+      try {
+        const cert = socket.getPeerCertificate();
+        socket.end();
+
+        if (!cert || !cert.valid_to) {
+          resolve({ domain, status: 'red', days_left: null, expires: null, issued: null, subject: '', error: 'No certificate returned' });
+          return;
+        }
+
+        const expiresDate = new Date(cert.valid_to);
+        const issuedDate = new Date(cert.valid_from);
+        const now = new Date();
+        const daysLeft = Math.floor((expiresDate - now) / (1000 * 60 * 60 * 24));
+
+        let status = 'green';
+        if (daysLeft <= 7) status = 'red';
+        else if (daysLeft <= 30) status = 'yellow';
+
+        const subject = cert.subject ? (cert.subject.CN || '') : '';
+
+        resolve({
+          domain,
+          status,
+          days_left: daysLeft,
+          expires: cert.valid_to,
+          issued: cert.valid_from,
+          subject,
+          issuer: cert.issuer ? (cert.issuer.O || '') : '',
+        });
+      } catch (e) {
+        socket.end();
+        resolve({ domain, status: 'red', days_left: null, expires: null, issued: null, subject: '', error: e.message });
+      }
+    });
+
+    socket.setTimeout(10000, () => {
+      socket.destroy();
+      resolve({ domain, status: 'red', days_left: null, expires: null, issued: null, subject: '', error: 'Connection timeout' });
+    });
+
+    socket.on('error', (err) => {
+      resolve({ domain, status: 'red', days_left: null, expires: null, issued: null, subject: '', error: err.message });
+    });
+  });
 }
 
-// --- Fail2ban Stats ---
+// ============================================================
+// SERVICE HEALTH CHECKS — TCP connect to known services
+// ============================================================
+
+const SERVICES = [
+  { name: 'Sentinel', host: 'localhost', port: 3002, description: 'Infrastructure monitor' },
+  { name: 'ArcaneDesk Web', host: '10.10.10.3', port: 3000, description: 'ArcaneDesk frontend' },
+  { name: 'CryptoTrader Web', host: '10.10.10.2', port: 3000, description: 'CryptoTrader frontend' },
+];
+
+function checkService(service) {
+  return new Promise((resolve) => {
+    const startTime = Date.now();
+    const socket = new net.Socket();
+
+    socket.setTimeout(5000);
+
+    socket.connect(service.port, service.host, () => {
+      const latency = Date.now() - startTime;
+      socket.destroy();
+      resolve({
+        name: service.name,
+        host: service.host,
+        port: service.port,
+        description: service.description,
+        status: 'up',
+        latency_ms: latency,
+      });
+    });
+
+    socket.on('timeout', () => {
+      socket.destroy();
+      resolve({
+        name: service.name,
+        host: service.host,
+        port: service.port,
+        description: service.description,
+        status: 'down',
+        latency_ms: null,
+        error: 'Connection timeout',
+      });
+    });
+
+    socket.on('error', (err) => {
+      socket.destroy();
+      resolve({
+        name: service.name,
+        host: service.host,
+        port: service.port,
+        description: service.description,
+        status: 'down',
+        latency_ms: null,
+        error: err.message,
+      });
+    });
+  });
+}
+
+// ============================================================
+// FAIL2BAN STATS
+// ============================================================
 
 async function getFail2banStats(host) {
   try {
@@ -62,7 +175,6 @@ async function getFail2banStats(host) {
     if (output.includes('fail2ban_not_available')) {
       return { host: host.name, available: false, jails: [] };
     }
-    // Parse jail list
     const jailMatch = output.match(/Jail list:\s*(.*)/);
     const jailNames = jailMatch ? jailMatch[1].split(',').map(j => j.trim()).filter(Boolean) : [];
 
@@ -94,12 +206,12 @@ async function getFail2banStats(host) {
   }
 }
 
-// --- Open Port Scan ---
+// ============================================================
+// OPEN PORT SCAN
+// ============================================================
 
 async function getOpenPorts(host) {
   try {
-    const target = host.type === 'local' ? 'localhost' : host.ssh_host;
-    // Use ss on the host itself for accurate results
     const cmd = "ss -tlnp 2>/dev/null | tail -n +2 | awk '{print $4}' | sed 's/.*://' | sort -un";
     const output = await execOnHost(host, cmd, 10000);
     const ports = output.split('\n').filter(Boolean).map(p => parseInt(p)).filter(p => !isNaN(p));
@@ -109,7 +221,9 @@ async function getOpenPorts(host) {
   }
 }
 
-// --- System Resource Alerts ---
+// ============================================================
+// SYSTEM RESOURCE ALERTS
+// ============================================================
 
 async function getSystemAlerts(host) {
   try {
@@ -155,7 +269,9 @@ async function getSystemAlerts(host) {
   }
 }
 
-// --- Backup Status (reuse existing) ---
+// ============================================================
+// BACKUP STATUS (reuse existing)
+// ============================================================
 
 function getBackupStatus() {
   const db = getDb();
@@ -185,7 +301,9 @@ function getBackupStatus() {
   });
 }
 
-// --- NPM Audit / Dependency Vulnerabilities ---
+// ============================================================
+// NPM AUDIT / DEPENDENCY VULNERABILITIES
+// ============================================================
 
 async function getNpmAuditSummary() {
   const projects = [
@@ -218,13 +336,23 @@ async function getNpmAuditSummary() {
 }
 
 // ============================================================
-// API ENDPOINTS
+// API ENDPOINTS (all cached at 60s)
 // ============================================================
 
 // GET /api/guard/ssl - SSL certificate status
 router.get('/ssl', async (req, res) => {
   try {
-    const results = await Promise.all(DOMAINS.map(checkSSLCert));
+    const results = await cachedFetch('ssl', () => Promise.all(DOMAINS.map(checkSSLCert)));
+    res.json(results);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/guard/services - Service health (TCP ping)
+router.get('/services', async (req, res) => {
+  try {
+    const results = await cachedFetch('services', () => Promise.all(SERVICES.map(checkService)));
     res.json(results);
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -234,9 +362,11 @@ router.get('/ssl', async (req, res) => {
 // GET /api/guard/fail2ban - Fail2ban stats from all hosts
 router.get('/fail2ban', async (req, res) => {
   try {
-    const db = getDb();
-    const hosts = db.prepare('SELECT * FROM hosts WHERE enabled = 1 ORDER BY name').all();
-    const results = await Promise.all(hosts.map(getFail2banStats));
+    const results = await cachedFetch('fail2ban', async () => {
+      const db = getDb();
+      const hosts = db.prepare('SELECT * FROM hosts WHERE enabled = 1 ORDER BY name').all();
+      return Promise.all(hosts.map(getFail2banStats));
+    });
     res.json(results);
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -246,9 +376,11 @@ router.get('/fail2ban', async (req, res) => {
 // GET /api/guard/ports - Open port scan
 router.get('/ports', async (req, res) => {
   try {
-    const db = getDb();
-    const hosts = db.prepare('SELECT * FROM hosts WHERE enabled = 1 ORDER BY name').all();
-    const results = await Promise.all(hosts.map(getOpenPorts));
+    const results = await cachedFetch('ports', async () => {
+      const db = getDb();
+      const hosts = db.prepare('SELECT * FROM hosts WHERE enabled = 1 ORDER BY name').all();
+      return Promise.all(hosts.map(getOpenPorts));
+    });
     res.json(results);
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -258,7 +390,7 @@ router.get('/ports', async (req, res) => {
 // GET /api/guard/deps - npm audit summary
 router.get('/deps', async (req, res) => {
   try {
-    const results = await getNpmAuditSummary();
+    const results = await cachedFetch('deps', getNpmAuditSummary);
     res.json(results);
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -266,9 +398,10 @@ router.get('/deps', async (req, res) => {
 });
 
 // GET /api/guard/backups - Backup status with traffic light
-router.get('/backups', (req, res) => {
+router.get('/backups', async (req, res) => {
   try {
-    res.json(getBackupStatus());
+    const results = await cachedFetch('backups', async () => getBackupStatus());
+    res.json(results);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -277,9 +410,11 @@ router.get('/backups', (req, res) => {
 // GET /api/guard/resources - System resource alerts
 router.get('/resources', async (req, res) => {
   try {
-    const db = getDb();
-    const hosts = db.prepare('SELECT * FROM hosts WHERE enabled = 1 ORDER BY name').all();
-    const results = await Promise.all(hosts.map(getSystemAlerts));
+    const results = await cachedFetch('resources', async () => {
+      const db = getDb();
+      const hosts = db.prepare('SELECT * FROM hosts WHERE enabled = 1 ORDER BY name').all();
+      return Promise.all(hosts.map(getSystemAlerts));
+    });
     res.json(results);
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -289,21 +424,28 @@ router.get('/resources', async (req, res) => {
 // GET /api/guard/summary - Quick overall summary
 router.get('/summary', async (req, res) => {
   try {
-    const [ssl, backups] = await Promise.all([
-      Promise.all(DOMAINS.map(checkSSLCert)),
-      Promise.resolve(getBackupStatus()),
+    const [ssl, backups, services] = await Promise.all([
+      cachedFetch('ssl', () => Promise.all(DOMAINS.map(checkSSLCert))),
+      cachedFetch('backups', async () => getBackupStatus()),
+      cachedFetch('services', () => Promise.all(SERVICES.map(checkService))),
     ]);
 
     const sslIssues = ssl.filter(s => s.status !== 'green').length;
     const backupIssues = backups.filter(b => b.status !== 'green').length;
+    const servicesDown = services.filter(s => s.status === 'down').length;
 
-    const overallStatus = (sslIssues > 0 || backupIssues > 0) ? 'yellow' : 'green';
-    const criticalCount = ssl.filter(s => s.status === 'red').length + backups.filter(b => b.status === 'red').length;
-    if (criticalCount > 0) {
-      res.json({ status: 'red', ssl_issues: sslIssues, backup_issues: backupIssues, critical: criticalCount });
-    } else {
-      res.json({ status: overallStatus, ssl_issues: sslIssues, backup_issues: backupIssues, critical: 0 });
-    }
+    const criticalCount = ssl.filter(s => s.status === 'red').length +
+      backups.filter(b => b.status === 'red').length + servicesDown;
+    const overallStatus = criticalCount > 0 ? 'red' :
+      (sslIssues > 0 || backupIssues > 0) ? 'yellow' : 'green';
+
+    res.json({
+      status: overallStatus,
+      ssl_issues: sslIssues,
+      backup_issues: backupIssues,
+      services_down: servicesDown,
+      critical: criticalCount,
+    });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

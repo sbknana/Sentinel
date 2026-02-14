@@ -225,7 +225,7 @@
   /* ---- STATS BAR ---- */
   .stats-bar {
     display: grid;
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(7, 1fr);
     gap: 16px;
     margin-bottom: 28px;
   }
@@ -583,6 +583,45 @@
   .resource-alert.red { color: var(--red-primary); }
   .resource-alert.yellow { color: var(--yellow-primary); }
 
+  /* ---- SERVICES ---- */
+  .service-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+  }
+
+  .service-item:last-child { border-bottom: none; }
+
+  .service-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    min-width: 130px;
+  }
+
+  .service-desc {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    flex: 1;
+  }
+
+  .service-latency {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+
+  .service-latency.up { color: var(--green-primary); }
+  .service-latency.down { color: var(--red-primary); }
+
+  .service-endpoint {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: var(--text-dim);
+  }
+
   /* ---- LOADING & ERROR ---- */
   .loading-placeholder {
     text-align: center;
@@ -669,7 +708,7 @@
 
   /* ---- RESPONSIVE ---- */
   @media (max-width: 1024px) {
-    .stats-bar { grid-template-columns: repeat(3, 1fr); }
+    .stats-bar { grid-template-columns: repeat(4, 1fr); }
     .two-col { grid-template-columns: 1fr; }
     .three-col { grid-template-columns: 1fr; }
     .resource-bars { grid-template-columns: 1fr 1fr 1fr; }
@@ -738,6 +777,11 @@
       <div class="stat-label">Resources</div>
       <div class="stat-sub" id="statResourcesSub">all hosts</div>
     </div>
+    <div class="card stat-card">
+      <div class="stat-value green" id="statServices">--</div>
+      <div class="stat-label">Services</div>
+      <div class="stat-sub" id="statServicesSub">pinging...</div>
+    </div>
   </section>
 
   <!-- ====== SSL CERTIFICATES ====== -->
@@ -750,6 +794,20 @@
       </div>
       <div id="sslList">
         <div class="loading-placeholder"><div class="loading-spinner"></div><br>Checking certificates...</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== SERVICES ====== -->
+  <section class="fade-in fade-in-delay-2" style="margin-bottom: 28px;">
+    <div class="section-title">Service Health</div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Service Status</div>
+        <div class="card-icon" id="servicesCount">--</div>
+      </div>
+      <div id="servicesList">
+        <div class="loading-placeholder"><div class="loading-spinner"></div><br>Pinging services...</div>
       </div>
     </div>
   </section>
@@ -827,6 +885,7 @@
 
 // --- State ---
 let sslData = [];
+let servicesData = [];
 let fail2banData = [];
 let portsData = [];
 let depsData = [];
@@ -882,6 +941,7 @@ async function fetchAllData() {
 
   const results = await Promise.allSettled([
     safeFetch('/api/guard/ssl'),
+    safeFetch('/api/guard/services'),
     safeFetch('/api/guard/fail2ban'),
     safeFetch('/api/guard/ports'),
     safeFetch('/api/guard/deps'),
@@ -890,11 +950,12 @@ async function fetchAllData() {
   ]);
 
   if (results[0].status === 'fulfilled' && results[0].value) sslData = results[0].value;
-  if (results[1].status === 'fulfilled' && results[1].value) fail2banData = results[1].value;
-  if (results[2].status === 'fulfilled' && results[2].value) portsData = results[2].value;
-  if (results[3].status === 'fulfilled' && results[3].value) depsData = results[3].value;
-  if (results[4].status === 'fulfilled' && results[4].value) backupsData = results[4].value;
-  if (results[5].status === 'fulfilled' && results[5].value) resourcesData = results[5].value;
+  if (results[1].status === 'fulfilled' && results[1].value) servicesData = results[1].value;
+  if (results[2].status === 'fulfilled' && results[2].value) fail2banData = results[2].value;
+  if (results[3].status === 'fulfilled' && results[3].value) portsData = results[3].value;
+  if (results[4].status === 'fulfilled' && results[4].value) depsData = results[4].value;
+  if (results[5].status === 'fulfilled' && results[5].value) backupsData = results[5].value;
+  if (results[6].status === 'fulfilled' && results[6].value) resourcesData = results[6].value;
 
   renderAll();
 
@@ -915,6 +976,7 @@ function refreshAll() {
 function renderAll() {
   renderStats();
   renderSSL();
+  renderServices();
   renderFail2ban();
   renderPorts();
   renderDeps();
@@ -948,6 +1010,9 @@ function updateOverallStatus() {
   // Check resources
   if (resourcesData.some(r => r.status === 'red')) hasRed = true;
   if (resourcesData.some(r => r.status === 'yellow')) hasYellow = true;
+
+  // Check services
+  if (servicesData.some(s => s.status === 'down')) hasRed = true;
 
   if (hasRed) {
     dot.className = 'status-dot error';
@@ -1010,6 +1075,14 @@ function renderStats() {
   resEl.textContent = resOk + '/' + resTotal;
   resEl.className = 'stat-value ' + (resOk === resTotal && resTotal > 0 ? 'green' : resourcesData.some(r => r.status === 'red') ? 'red' : 'yellow');
   document.getElementById('statResourcesSub').textContent = resTotal + ' hosts monitored';
+
+  // Services
+  const svcUp = servicesData.filter(s => s.status === 'up').length;
+  const svcTotal = servicesData.length;
+  const svcEl = document.getElementById('statServices');
+  svcEl.textContent = svcUp + '/' + svcTotal;
+  svcEl.className = 'stat-value ' + (svcUp === svcTotal && svcTotal > 0 ? 'green' : 'red');
+  document.getElementById('statServicesSub').textContent = svcUp === svcTotal ? 'all online' : (svcTotal - svcUp) + ' down';
 }
 
 // ============================================================
@@ -1034,6 +1107,33 @@ function renderSSL() {
           <div class="ssl-days ${s.status}">${daysText}</div>
           <div class="ssl-expires">${s.expires ? 'Exp: ' + escapeHtml(s.expires) : s.error ? escapeHtml(s.error) : 'unknown'}</div>
         </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ============================================================
+// SERVICES
+// ============================================================
+function renderServices() {
+  const container = document.getElementById('servicesList');
+  document.getElementById('servicesCount').textContent = servicesData.length + ' services';
+
+  if (servicesData.length === 0) {
+    container.innerHTML = '<div class="no-data">No service data available</div>';
+    return;
+  }
+
+  container.innerHTML = servicesData.map(s => {
+    const statusClass = s.status === 'up' ? 'green' : 'red';
+    const latencyText = s.status === 'up' ? s.latency_ms + 'ms' : 'DOWN';
+    return `
+      <div class="service-item">
+        <div class="traffic-light ${statusClass}"></div>
+        <div class="service-name">${escapeHtml(s.name)}</div>
+        <div class="service-desc">${escapeHtml(s.description || '')}</div>
+        <div class="service-endpoint">${escapeHtml(s.host)}:${s.port}</div>
+        <div class="service-latency ${s.status}">${latencyText}</div>
       </div>
     `;
   }).join('');
