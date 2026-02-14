@@ -1,4 +1,4 @@
-// Copyright 2026, TheForge, LLC
+// Copyright 2026, Forgeborn
 const path = require('path');
 const fs = require('fs');
 
@@ -24,6 +24,13 @@ const config = {
     alert_history_days: 90,
   },
   backups: fileConfig.backups || [],
+  recon: fileConfig.recon || {
+    enabled: false,
+    gather_interval_hours: 6,
+    reddit: { subreddits: [], keywords: [], max_posts_per_sub: 25 },
+    news: { rss_feeds: [], keywords: [] },
+    industries: {},
+  },
 };
 
 module.exports = config;

@@ -1,6 +1,7 @@
 // Copyright 2026, Forgeborn
 const express = require('express');
 const { getDb } = require('../db');
+const reconCollector = require('../collectors/recon');
 
 const router = express.Router();
 
@@ -397,6 +398,241 @@ router.post('/mentions/mark-all-read', (req, res) => {
       db.prepare('UPDATE recon_mentions SET is_read = 1').run();
     }
     res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ============================================================
+// INTELLIGENCE GATHERING API — ForgeRecon Live Sources
+// ============================================================
+
+// GET /api/recon/reddit — fetch recent Reddit posts from configured subreddits
+router.get('/reddit', async (req, res) => {
+  try {
+    reconCollector.ensureTables();
+    const result = await reconCollector.gatherReddit();
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/recon/news — aggregate industry news from RSS feeds
+router.get('/news', async (req, res) => {
+  try {
+    reconCollector.ensureTables();
+    const result = await reconCollector.gatherNews();
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/recon/analyze — use Claude API to analyze gathered intelligence
+router.post('/analyze', async (req, res) => {
+  try {
+    reconCollector.ensureTables();
+    const { industry, hours, scope } = req.body || {};
+    const result = await reconCollector.analyzeIntelligence({
+      industry: industry || null,
+      hours: parseInt(hours) || 24,
+      scope: scope || 'manual',
+    });
+
+    if (result.error && !result.summary_id) {
+      return res.status(result.error.includes('ANTHROPIC_API_KEY') ? 503 : 422).json(result);
+    }
+
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/recon/feed — paginated intelligence feed with AI summaries
+router.get('/feed', (req, res) => {
+  try {
+    reconCollector.ensureTables();
+    ensureTables();
+    seedDemoData();
+    const db = getDb();
+
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const offset = (page - 1) * limit;
+    const { industry, source, unread } = req.query;
+
+    // Build WHERE clause for intel items
+    let intelWhere = '1=1';
+    const intelParams = [];
+
+    if (industry) { intelWhere += ' AND industry = ?'; intelParams.push(industry); }
+    if (source) { intelWhere += ' AND source = ?'; intelParams.push(source); }
+    if (unread === '1') { intelWhere += ' AND is_read = 0'; }
+
+    // Get total count for pagination
+    const totalIntel = db.prepare(
+      `SELECT COUNT(*) as c FROM recon_intel WHERE ${intelWhere}`
+    ).get(...intelParams).c;
+
+    // Build WHERE clause for mentions
+    let mentionWhere = '1=1';
+    const mentionParams = [];
+
+    if (industry) { mentionWhere += ' AND industry = ?'; mentionParams.push(industry); }
+    if (source) { mentionWhere += ' AND source = ?'; mentionParams.push(source); }
+    if (unread === '1') { mentionWhere += ' AND is_read = 0'; }
+
+    const totalMentions = db.prepare(
+      `SELECT COUNT(*) as c FROM recon_mentions WHERE ${mentionWhere}`
+    ).get(...mentionParams).c;
+
+    const totalItems = totalIntel + totalMentions;
+    const totalPages = Math.ceil(totalItems / limit);
+
+    // Combine intel and mentions into a unified feed using UNION ALL
+    const feedSql = `
+      SELECT
+        id, source, industry, title, url,
+        body AS summary, author, score,
+        subreddit, keywords_matched,
+        ai_analysis, gathered_at AS timestamp,
+        published_at, is_read, is_actionable,
+        'intel' AS feed_type
+      FROM recon_intel
+      WHERE ${intelWhere}
+
+      UNION ALL
+
+      SELECT
+        id, source, industry, title, url,
+        summary, author, CAST(score AS INTEGER),
+        NULL AS subreddit, product AS keywords_matched,
+        NULL AS ai_analysis, fetched_at AS timestamp,
+        published_at, is_read, is_actionable,
+        'mention' AS feed_type
+      FROM recon_mentions
+      WHERE ${mentionWhere}
+
+      ORDER BY timestamp DESC
+      LIMIT ? OFFSET ?
+    `;
+
+    const allParams = [...intelParams, ...mentionParams, limit, offset];
+    const items = db.prepare(feedSql).all(...allParams);
+
+    // Get latest AI summary
+    let latestSummary = null;
+    try {
+      latestSummary = db.prepare(`
+        SELECT id, scope, industry, summary, key_findings, action_items, threat_level, created_at
+        FROM recon_ai_summaries
+        ORDER BY created_at DESC LIMIT 1
+      `).get();
+    } catch {
+      // Table may not exist yet if no analysis has been run
+    }
+
+    // Get recent gather run stats
+    let recentRuns = [];
+    try {
+      recentRuns = db.prepare(`
+        SELECT id, source, started_at, finished_at, items_found, items_new, status, error
+        FROM recon_gather_runs
+        ORDER BY started_at DESC LIMIT 5
+      `).all();
+    } catch {
+      // Table may not exist yet
+    }
+
+    res.json({
+      feed: items,
+      pagination: {
+        page,
+        limit,
+        total_items: totalItems,
+        total_pages: totalPages,
+        has_next: page < totalPages,
+        has_prev: page > 1,
+      },
+      latest_analysis: latestSummary,
+      recent_runs: recentRuns,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/recon/intel — query gathered intelligence items directly
+router.get('/intel', (req, res) => {
+  try {
+    reconCollector.ensureTables();
+    const db = getDb();
+
+    const { industry, source, subreddit, limit } = req.query;
+    let sql = 'SELECT * FROM recon_intel WHERE 1=1';
+    const params = [];
+
+    if (industry) { sql += ' AND industry = ?'; params.push(industry); }
+    if (source) { sql += ' AND source = ?'; params.push(source); }
+    if (subreddit) { sql += ' AND subreddit = ?'; params.push(subreddit); }
+
+    sql += ' ORDER BY gathered_at DESC LIMIT ?';
+    params.push(parseInt(limit) || 50);
+
+    const rows = db.prepare(sql).all(...params);
+    res.json(rows);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/recon/runs — list recent gather runs
+router.get('/runs', (req, res) => {
+  try {
+    reconCollector.ensureTables();
+    const db = getDb();
+
+    const limit = parseInt(req.query.limit) || 20;
+    const rows = db.prepare(`
+      SELECT * FROM recon_gather_runs
+      ORDER BY started_at DESC LIMIT ?
+    `).all(limit);
+
+    res.json(rows);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/recon/analyses — list AI analysis summaries
+router.get('/analyses', (req, res) => {
+  try {
+    reconCollector.ensureTables();
+    const db = getDb();
+
+    const { industry, limit } = req.query;
+    let sql = 'SELECT * FROM recon_ai_summaries WHERE 1=1';
+    const params = [];
+
+    if (industry) { sql += ' AND industry = ?'; params.push(industry); }
+
+    sql += ' ORDER BY created_at DESC LIMIT ?';
+    params.push(parseInt(limit) || 10);
+
+    const rows = db.prepare(sql).all(...params);
+    res.json(rows);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/recon/gather — trigger a full intelligence gathering run manually
+router.post('/gather', async (req, res) => {
+  try {
+    const result = await reconCollector.runFullGather();
+    res.json(result);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

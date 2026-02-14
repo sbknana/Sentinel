@@ -1,12 +1,14 @@
-// Copyright 2026, TheForge, LLC
+// Copyright 2026, Forgeborn
 const cron = require('node-cron');
 const config = require('./config');
 const { collectAll } = require('./collectors/vm-health');
 const { collectDockerAll } = require('./collectors/docker');
 const { collectBackupStatus } = require('./collectors/backup');
+const { runFullGather } = require('./collectors/recon');
 
 let metricsTask = null;
 let backupTask = null;
+let reconTask = null;
 
 /**
  * Start the collection scheduler.
@@ -71,6 +73,37 @@ function start() {
         .catch((err) => console.error('[scheduler] Initial backup check error:', err.message));
     }, 3000);
   }
+
+  // ForgeRecon: intelligence gathering every N hours (default: 6)
+  const reconConfig = config.recon || {};
+  if (reconConfig.enabled) {
+    const hours = reconConfig.gather_interval_hours || 6;
+    const reconCron = `0 0 */${hours} * * *`; // At minute 0 of every Nth hour
+    console.log(`[scheduler] ForgeRecon intelligence gathering every ${hours}h (cron: ${reconCron})`);
+
+    reconTask = cron.schedule(reconCron, async () => {
+      try {
+        const results = await runFullGather();
+        const redditNew = results.reddit?.items_new || 0;
+        const newsNew = results.news?.items_new || 0;
+        console.log(`[scheduler] ForgeRecon gather: reddit=${redditNew} new, news=${newsNew} new`);
+      } catch (err) {
+        console.error('[scheduler] ForgeRecon gather error:', err.message);
+      }
+    });
+
+    // Run initial recon gather after a longer delay (10s — let metrics/backups finish first)
+    setTimeout(() => {
+      console.log('[scheduler] Running initial ForgeRecon gather...');
+      runFullGather()
+        .then((results) => {
+          const redditNew = results.reddit?.items_new || 0;
+          const newsNew = results.news?.items_new || 0;
+          console.log(`[scheduler] Initial ForgeRecon: reddit=${redditNew} new, news=${newsNew} new`);
+        })
+        .catch((err) => console.error('[scheduler] Initial ForgeRecon error:', err.message));
+    }, 10000);
+  }
 }
 
 /**
@@ -84,6 +117,10 @@ function stop() {
   if (backupTask) {
     backupTask.stop();
     backupTask = null;
+  }
+  if (reconTask) {
+    reconTask.stop();
+    reconTask = null;
   }
 }
 

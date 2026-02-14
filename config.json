@@ -83,5 +83,69 @@
             "password_file": "/home/user/.restic-password",
             "stale_hours": 26
         }
-    ]
+    ],
+    "recon": {
+        "enabled": true,
+        "gather_interval_hours": 6,
+        "reddit": {
+            "subreddits": [
+                "MechanicAdvice",
+                "AutoRepair",
+                "AutoRepairShop",
+                "mtg",
+                "mtgfinance",
+                "EDH",
+                "magicTCG",
+                "ethereum",
+                "solana",
+                "cryptocurrency"
+            ],
+            "keywords": [
+                "Tekmetric",
+                "Shopmonkey",
+                "Shop-Ware",
+                "Mitchell 1",
+                "AutoLeap",
+                "auto repair software",
+                "shop management",
+                "TCGplayer",
+                "Moxfield",
+                "Archidekt",
+                "Delver Lens",
+                "card scanning",
+                "card grading",
+                "LGS software",
+                "Ethereum L2",
+                "Solana",
+                "DeFi"
+            ],
+            "max_posts_per_sub": 25
+        },
+        "news": {
+            "rss_feeds": [
+                "https://techcrunch.com/feed/",
+                "https://www.coindesk.com/arc/outboundfeeds/rss/",
+                "https://icv2.com/feed"
+            ],
+            "keywords": [
+                "auto repair",
+                "automotive software",
+                "TCGplayer",
+                "trading card",
+                "card grading",
+                "MTG",
+                "Pokemon TCG",
+                "blockchain",
+                "cryptocurrency",
+                "DeFi",
+                "Ethereum",
+                "Solana"
+            ]
+        },
+        "industries": {
+            "auto-repair": ["Tekmetric", "Shopmonkey", "Shop-Ware", "Mitchell 1", "AutoLeap", "auto repair", "shop management"],
+            "tcg": ["TCGplayer", "Moxfield", "Archidekt", "Delver Lens", "MTG", "Pokemon", "card grading", "LGS"],
+            "blockchain": ["Ethereum", "Solana", "DeFi", "cryptocurrency", "blockchain", "crypto"]
+        }
+    }
 }
