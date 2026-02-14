@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ForgeVoice - AI Voice Command Center</title>
+<script src="/sentinel-nav.js"></script>
 <style>
   /* ============================================
      FORGEVOICE - AI Voice Command Center
@@ -142,26 +143,6 @@
     align-items: center;
     gap: 12px;
   }
-
-  .header-nav {
-    display: flex;
-    gap: 4px;
-    margin-right: 12px;
-  }
-
-  .nav-link {
-    padding: 6px 12px;
-    border-radius: 6px;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text-dim);
-    text-decoration: none;
-    border: 1px solid transparent;
-    transition: all 0.2s ease;
-  }
-
-  .nav-link:hover { color: var(--text-secondary); border-color: var(--border-subtle); }
-  .nav-link.active { color: var(--cyan-primary); border-color: var(--cyan-primary); background: var(--cyan-dim); }
 
   .status-badge {
     display: flex;
@@ -741,7 +722,6 @@
     .container { padding: 16px; }
     .side-column { grid-template-columns: 1fr; }
     .header { flex-wrap: wrap; gap: 12px; }
-    .header-nav { flex-wrap: wrap; }
   }
 </style>
 </head>
@@ -759,13 +739,6 @@
       </div>
     </div>
     <div class="header-right">
-      <nav class="header-nav">
-        <a href="/" class="nav-link">Sentinel</a>
-        <a href="/nexus.html" class="nav-link">Nexus</a>
-        <a href="/guard.html" class="nav-link">Guard</a>
-        <a href="/recon.html" class="nav-link">Recon</a>
-        <a href="/voice.html" class="nav-link active">Voice</a>
-      </nav>
       <div class="status-badge" id="statusBadge">
         <span class="status-dot" id="statusDot"></span>
         <span id="statusText">Connecting...</span>

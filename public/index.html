@@ -4,7 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sentinel - Infrastructure Monitor</title>
-  <!-- Copyright 2026, TheForge, LLC -->
+  <!-- Copyright 2026, Forgeborn -->
+  <script src="/sentinel-nav.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -365,6 +366,26 @@
     .dot-blocked { background: #f85149; }
     .dot-done { background: #3fb950; }
 
+    /* Forgeborn indicator */
+    .forgeborn-icon {
+      font-size: 14px;
+      text-shadow: 0 0 6px rgba(245, 158, 11, 0.5);
+      cursor: help;
+      vertical-align: middle;
+    }
+    .forgeborn-badge {
+      display: inline-block;
+      font-size: 0.7rem;
+      color: #f59e0b;
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      background: rgba(245, 158, 11, 0.1);
+      border-radius: 999px;
+      padding: 0.1rem 0.45rem;
+      margin-left: 0.4rem;
+      text-shadow: 0 0 6px rgba(245, 158, 11, 0.5);
+      vertical-align: middle;
+    }
+
     /* Activity feed */
     .activity-feed { list-style: none; }
     .activity-item {
@@ -488,6 +509,147 @@
     .backup-check-btn:hover { background: #30363d; }
     .backup-check-btn:disabled { opacity: 0.5; cursor: wait; }
 
+    /* Project sort controls */
+    .sort-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+    .sort-controls label {
+      font-size: 0.8rem;
+      color: #8b949e;
+      white-space: nowrap;
+    }
+    .sort-select {
+      background: #0d1117;
+      color: #c9d1d9;
+      border: 1px solid #30363d;
+      border-radius: 4px;
+      padding: 0.3rem 0.6rem;
+      font-size: 0.8rem;
+      font-family: inherit;
+      cursor: pointer;
+      outline: none;
+    }
+    .sort-select:hover { border-color: #58a6ff; }
+    .sort-select:focus { border-color: #58a6ff; box-shadow: 0 0 0 1px #58a6ff33; }
+    .sort-dir-btn {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      color: #8b949e;
+      border-radius: 4px;
+      padding: 0.25rem 0.5rem;
+      font-size: 0.85rem;
+      cursor: pointer;
+      line-height: 1;
+      min-width: 28px;
+      text-align: center;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .sort-dir-btn:hover { border-color: #58a6ff; color: #58a6ff; }
+
+    /* Clickable project cards */
+    .project-card { cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+    .project-card:hover { border-color: #58a6ff; background: #161b22; }
+
+    /* Project Detail Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 1000;
+      overflow-y: auto;
+      padding: 2rem;
+    }
+    .modal-overlay.active { display: flex; justify-content: center; align-items: flex-start; }
+    .modal-content {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      width: 100%;
+      max-width: 960px;
+      padding: 1.5rem;
+      position: relative;
+    }
+    .modal-close {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: none;
+      border: 1px solid #30363d;
+      color: #8b949e;
+      font-size: 1.1rem;
+      cursor: pointer;
+      border-radius: 4px;
+      padding: 0.2rem 0.6rem;
+    }
+    .modal-close:hover { background: #21262d; color: #c9d1d9; }
+    .modal-header { margin-bottom: 1.25rem; }
+    .modal-header h2 { color: #58a6ff; font-size: 1.25rem; margin-bottom: 0.25rem; }
+    .modal-header .modal-subtitle { color: #8b949e; font-size: 0.85rem; }
+    .modal-header .modal-summary { color: #c9d1d9; font-size: 0.85rem; margin-top: 0.5rem; line-height: 1.5; }
+    .modal-stats {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+      flex-wrap: wrap;
+    }
+    .modal-stat {
+      background: #0d1117;
+      border: 1px solid #21262d;
+      border-radius: 6px;
+      padding: 0.5rem 1rem;
+      text-align: center;
+      min-width: 80px;
+    }
+    .modal-stat .stat-val { font-size: 1.25rem; font-weight: bold; }
+    .modal-stat .stat-label { font-size: 0.7rem; color: #8b949e; text-transform: uppercase; }
+    .modal-tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid #21262d;
+      margin-bottom: 1rem;
+    }
+    .modal-tab {
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      color: #8b949e;
+      border-bottom: 2px solid transparent;
+      font-size: 0.85rem;
+    }
+    .modal-tab:hover { color: #c9d1d9; }
+    .modal-tab.active { color: #58a6ff; border-bottom-color: #58a6ff; }
+    .modal-tab-content { display: none; }
+    .modal-tab-content.active { display: block; }
+    .detail-task { padding: 0.5rem 0; border-bottom: 1px solid #21262d; font-size: 0.85rem; }
+    .detail-task:last-child { border-bottom: none; }
+    .detail-task-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.2rem; }
+    .detail-task-desc { color: #8b949e; font-size: 0.8rem; margin-top: 0.2rem; max-height: 3rem; overflow: hidden; }
+    .decision-card {
+      background: #0d1117;
+      border: 1px solid #21262d;
+      border-radius: 6px;
+      padding: 0.75rem;
+      margin-bottom: 0.5rem;
+    }
+    .decision-topic { color: #58a6ff; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.3rem; }
+    .decision-text { font-size: 0.8rem; color: #c9d1d9; line-height: 1.4; }
+    .decision-rationale { font-size: 0.75rem; color: #8b949e; margin-top: 0.3rem; font-style: italic; }
+    .decision-time { font-size: 0.7rem; color: #484f58; margin-top: 0.3rem; }
+    .session-card {
+      background: #0d1117;
+      border: 1px solid #21262d;
+      border-left: 3px solid #3fb950;
+      border-radius: 6px;
+      padding: 0.75rem;
+      margin-bottom: 0.5rem;
+    }
+    .session-summary { font-size: 0.85rem; line-height: 1.4; }
+    .session-next { font-size: 0.8rem; color: #d29922; margin-top: 0.4rem; }
+    .session-time { font-size: 0.7rem; color: #484f58; margin-top: 0.3rem; }
+
     /* Responsive adjustments */
     @media (max-width: 600px) {
       body { padding: 0.75rem; }
@@ -495,6 +657,7 @@
       .container-grid { grid-template-columns: 1fr; }
       .top-row { grid-template-columns: 1fr; }
       .backup-grid { grid-template-columns: 1fr; }
+      .modal-overlay { padding: 0.5rem; }
     }
   </style>
 </head>
@@ -564,6 +727,16 @@
 
     <!-- Projects tab -->
     <div class="tab-content" id="tab-projects">
+      <div class="sort-controls" id="project-sort-controls">
+        <label for="project-sort">Sort by:</label>
+        <select class="sort-select" id="project-sort" onchange="sortAndRenderProjects()">
+          <option value="status">Status</option>
+          <option value="name">Name</option>
+          <option value="activity">Activity</option>
+          <option value="completion">Completion</option>
+        </select>
+        <button class="sort-dir-btn" id="sort-dir-btn" onclick="toggleSortDirection()" title="Toggle sort direction">&#9660;</button>
+      </div>
       <div class="project-grid" id="forge-projects">
         <span class="loading">Loading projects...</span>
       </div>
@@ -592,6 +765,14 @@
       <ul class="activity-feed" id="forge-questions">
         <li class="loading">Loading...</li>
       </ul>
+    </div>
+  </div>
+
+  <!-- Project Detail Modal -->
+  <div class="modal-overlay" id="project-modal">
+    <div class="modal-content">
+      <button class="modal-close" onclick="closeProjectModal()">&times;</button>
+      <div id="project-modal-body"><span class="loading">Loading...</span></div>
     </div>
   </div>
 
@@ -1022,27 +1203,254 @@
           `).join('');
         }
 
-        // Projects
-        const projEl = document.getElementById('forge-projects');
-        if (!data.active_projects || data.active_projects.length === 0) {
-          projEl.innerHTML = '<span style="color:#8b949e">No active projects</span>';
-        } else {
-          projEl.innerHTML = data.active_projects.map(p => `
-            <div class="project-card">
-              <div class="project-name">${escapeHtml(p.codename || p.name)}</div>
-              <div class="project-status">${escapeHtml(p.name)} - ${p.status || 'unknown'}</div>
-              <div class="task-counts">
-                ${p.in_progress_count > 0 ? '<span class="count-item"><span class="dot dot-progress"></span>' + p.in_progress_count + ' active</span>' : ''}
-                ${p.todo_count > 0 ? '<span class="count-item"><span class="dot dot-todo"></span>' + p.todo_count + ' todo</span>' : ''}
-                ${p.blocked_count > 0 ? '<span class="count-item"><span class="dot dot-blocked"></span>' + p.blocked_count + ' blocked</span>' : ''}
-                ${p.done_count > 0 ? '<span class="count-item"><span class="dot dot-done"></span>' + p.done_count + ' done</span>' : ''}
-              </div>
-            </div>
-          `).join('');
-        }
+        // Projects tab is handled by loadAllProjects() — no need to render from activity data
       } catch (err) {
         document.getElementById('forge-completions').innerHTML =
           '<li class="error-msg">Failed to load: ' + escapeHtml(err.message) + '</li>';
+      }
+    }
+
+    // =============================================
+    // Project Detail Modal
+    // =============================================
+    function closeProjectModal() {
+      document.getElementById('project-modal').classList.remove('active');
+    }
+
+    // Close modal on overlay click (not content click)
+    document.getElementById('project-modal').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) closeProjectModal();
+    });
+
+    // Close modal on Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeProjectModal();
+    });
+
+    async function openProjectDetail(id) {
+      const modal = document.getElementById('project-modal');
+      const body = document.getElementById('project-modal-body');
+      body.innerHTML = '<span class="loading">Loading project...</span>';
+      modal.classList.add('active');
+
+      try {
+        const res = await fetch('/api/forge/projects/' + id + '/detail');
+        if (!res.ok) throw new Error('API returned ' + res.status);
+        const data = await res.json();
+        renderProjectDetail(data);
+      } catch (err) {
+        body.innerHTML = '<span class="error-msg">Failed to load project: ' + escapeHtml(err.message) + '</span>';
+      }
+    }
+
+    function renderProjectDetail(data) {
+      const p = data.project;
+      const c = data.counts || {};
+      const total = (c.todo || 0) + (c.in_progress || 0) + (c.blocked || 0) + (c.done || 0);
+      const pctDone = total > 0 ? Math.round((c.done || 0) / total * 100) : 0;
+
+      let html = `
+        <div class="modal-header">
+          <h2>${escapeHtml(p.codename || p.name)}${p.show_on_website ? ' <span class="forgeborn-icon" title="Listed on forgeborn.dev">\u2692\uFE0F</span>' : ''}</h2>
+          <div class="modal-subtitle">${escapeHtml(p.name)}${p.category ? ' &middot; ' + escapeHtml(p.category) : ''} &middot; <span class="badge badge-${p.status === 'active' ? 'in_progress' : 'todo'}">${escapeHtml(p.status || 'unknown')}</span>${p.show_on_website ? ' <span class="forgeborn-badge">\u2692\uFE0F forgeborn.dev</span>' : ''}</div>
+          ${p.summary ? '<div class="modal-summary">' + escapeHtml(p.summary) + '</div>' : ''}
+        </div>
+
+        <div class="modal-stats">
+          <div class="modal-stat"><div class="stat-val" style="color:#1f6feb">${c.in_progress || 0}</div><div class="stat-label">In Progress</div></div>
+          <div class="modal-stat"><div class="stat-val">${c.todo || 0}</div><div class="stat-label">Todo</div></div>
+          <div class="modal-stat"><div class="stat-val" style="color:#f85149">${c.blocked || 0}</div><div class="stat-label">Blocked</div></div>
+          <div class="modal-stat"><div class="stat-val" style="color:#3fb950">${c.done || 0}</div><div class="stat-label">Done</div></div>
+          <div class="modal-stat"><div class="stat-val" style="color:#58a6ff">${pctDone}%</div><div class="stat-label">Complete</div></div>
+        </div>
+
+        <div class="modal-tabs" id="detail-tabs">
+          <div class="modal-tab active" data-dtab="detail-tasks">Tasks (${total})</div>
+          <div class="modal-tab" data-dtab="detail-decisions">Decisions (${(data.decisions || []).length})</div>
+          <div class="modal-tab" data-dtab="detail-sessions">Sessions (${(data.sessions || []).length})</div>
+          <div class="modal-tab" data-dtab="detail-questions">Questions (${(data.questions || []).length})</div>
+        </div>
+
+        <div class="modal-tab-content active" id="detail-tasks">
+          ${renderDetailTasks(data.tasks || [])}
+        </div>
+        <div class="modal-tab-content" id="detail-decisions">
+          ${renderDetailDecisions(data.decisions || [])}
+        </div>
+        <div class="modal-tab-content" id="detail-sessions">
+          ${renderDetailSessions(data.sessions || [])}
+        </div>
+        <div class="modal-tab-content" id="detail-questions">
+          ${renderDetailQuestions(data.questions || [])}
+        </div>
+      `;
+
+      document.getElementById('project-modal-body').innerHTML = html;
+
+      // Wire up modal tab switching
+      document.querySelectorAll('#detail-tabs .modal-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          document.querySelectorAll('#detail-tabs .modal-tab').forEach(t => t.classList.remove('active'));
+          document.querySelectorAll('#project-modal-body .modal-tab-content').forEach(c => c.classList.remove('active'));
+          tab.classList.add('active');
+          document.getElementById(tab.dataset.dtab).classList.add('active');
+        });
+      });
+    }
+
+    function renderDetailTasks(tasks) {
+      if (tasks.length === 0) return '<div class="empty-msg">No tasks for this project</div>';
+      return tasks.map(t => `
+        <div class="detail-task">
+          <div class="detail-task-header">
+            <span class="task-id">#${t.id}</span>
+            <span class="badge badge-${t.status}">${(t.status || '').replace('_', ' ')}</span>
+            <span class="priority-${t.priority || 'medium'}">${t.priority || ''}</span>
+            ${t.complexity ? '<span style="color:#484f58;font-size:0.7rem">[' + escapeHtml(t.complexity) + ']</span>' : ''}
+            <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHtml(t.title)}">${escapeHtml(t.title)}</span>
+            <span class="activity-time">${t.completed_at ? 'done ' + timeAgo(t.completed_at) : timeAgo(t.created_at)}</span>
+          </div>
+          ${t.description ? '<div class="detail-task-desc">' + escapeHtml(t.description) + '</div>' : ''}
+        </div>
+      `).join('');
+    }
+
+    function renderDetailDecisions(decisions) {
+      if (decisions.length === 0) return '<div class="empty-msg">No decisions recorded</div>';
+      return decisions.map(d => `
+        <div class="decision-card">
+          <div class="decision-topic">${escapeHtml(d.topic || 'Decision')}</div>
+          <div class="decision-text">${escapeHtml(d.decision)}</div>
+          ${d.rationale ? '<div class="decision-rationale">' + escapeHtml(d.rationale) + '</div>' : ''}
+          ${d.alternatives_considered ? '<div style="font-size:0.75rem;color:#484f58;margin-top:0.2rem">Alternatives: ' + escapeHtml(d.alternatives_considered) + '</div>' : ''}
+          <div class="decision-time">${timeAgo(d.decided_at)}</div>
+        </div>
+      `).join('');
+    }
+
+    function renderDetailSessions(sessions) {
+      if (sessions.length === 0) return '<div class="empty-msg">No session notes</div>';
+      return sessions.map(s => `
+        <div class="session-card">
+          <div class="session-summary">${escapeHtml(s.summary)}</div>
+          ${s.key_points ? '<div style="font-size:0.8rem;color:#8b949e;margin-top:0.3rem">' + escapeHtml(s.key_points) + '</div>' : ''}
+          ${s.next_steps ? '<div class="session-next">Next: ' + escapeHtml(s.next_steps) + '</div>' : ''}
+          <div class="session-time">${s.session_date ? escapeHtml(s.session_date) : timeAgo(s.created_at)}</div>
+        </div>
+      `).join('');
+    }
+
+    function renderDetailQuestions(questions) {
+      if (questions.length === 0) return '<div class="empty-msg">No open questions</div>';
+      return questions.map(q => `
+        <div class="decision-card" style="border-left:3px solid ${q.resolved ? '#3fb950' : '#d29922'}">
+          <div class="decision-topic">
+            <span class="priority-${q.priority || 'medium'}">[${q.priority || 'medium'}]</span>
+            ${q.resolved ? '<span style="color:#3fb950;font-size:0.75rem"> RESOLVED</span>' : '<span style="color:#d29922;font-size:0.75rem"> OPEN</span>'}
+          </div>
+          <div class="decision-text">${escapeHtml(q.question)}</div>
+          ${q.context ? '<div class="decision-rationale">' + escapeHtml(q.context) + '</div>' : ''}
+          <div class="decision-time">${timeAgo(q.asked_at)}</div>
+        </div>
+      `).join('');
+    }
+
+    // =============================================
+    // All Projects (for Projects tab)
+    // =============================================
+    let cachedProjects = [];       // cached API data so we can re-sort without re-fetching
+    let projectSortField = 'status';  // default sort matches API order
+    let projectSortAsc = true;     // true = default direction for each sort type
+
+    // Status priority order: active first, then planning, concept, complete
+    const STATUS_ORDER = { active: 0, planning: 1, concept: 2, complete: 3 };
+
+    function getStatusOrder(status) {
+      const s = (status || '').toLowerCase();
+      return STATUS_ORDER[s] !== undefined ? STATUS_ORDER[s] : 99;
+    }
+
+    function getProjectActivity(p) {
+      return (p.in_progress_count || 0) + (p.todo_count || 0) + (p.blocked_count || 0);
+    }
+
+    function getProjectCompletion(p) {
+      const total = (p.todo_count || 0) + (p.in_progress_count || 0) + (p.blocked_count || 0) + (p.done_count || 0);
+      if (total === 0) return 0;
+      return (p.done_count || 0) / total;
+    }
+
+    function sortProjects(projects, field, ascending) {
+      const sorted = [...projects];
+      sorted.sort((a, b) => {
+        let cmp = 0;
+        switch (field) {
+          case 'name':
+            cmp = (a.codename || a.name || '').localeCompare(b.codename || b.name || '', undefined, { sensitivity: 'base' });
+            break;
+          case 'status':
+            cmp = getStatusOrder(a.status) - getStatusOrder(b.status);
+            if (cmp === 0) cmp = (a.codename || a.name || '').localeCompare(b.codename || b.name || '', undefined, { sensitivity: 'base' });
+            break;
+          case 'activity':
+            cmp = getProjectActivity(b) - getProjectActivity(a); // most active first by default
+            break;
+          case 'completion':
+            cmp = getProjectCompletion(b) - getProjectCompletion(a); // highest % first by default
+            break;
+        }
+        return ascending ? cmp : -cmp;
+      });
+      return sorted;
+    }
+
+    function renderProjectCards(projects) {
+      const projEl = document.getElementById('forge-projects');
+      if (!projects || projects.length === 0) {
+        projEl.innerHTML = '<span class="empty-msg">No projects found</span>';
+        return;
+      }
+      projEl.innerHTML = projects.map(p => {
+        const total = (p.todo_count || 0) + (p.in_progress_count || 0) + (p.blocked_count || 0) + (p.done_count || 0);
+        const pctDone = total > 0 ? Math.round((p.done_count || 0) / total * 100) : 0;
+        return `
+          <div class="project-card" onclick="openProjectDetail(${p.id})">
+            <div class="project-name">${escapeHtml(p.codename || p.name)}${p.show_on_website ? ' <span class="forgeborn-icon" title="Listed on forgeborn.dev">\u2692\uFE0F</span>' : ''}</div>
+            <div class="project-status">${escapeHtml(p.name)}${p.category ? ' &middot; ' + escapeHtml(p.category) : ''} &middot; ${p.status || 'unknown'}${total > 0 ? ' &middot; ' + pctDone + '% done' : ''}</div>
+            <div class="task-counts">
+              ${p.in_progress_count > 0 ? '<span class="count-item"><span class="dot dot-progress"></span>' + p.in_progress_count + ' active</span>' : ''}
+              ${p.todo_count > 0 ? '<span class="count-item"><span class="dot dot-todo"></span>' + p.todo_count + ' todo</span>' : ''}
+              ${p.blocked_count > 0 ? '<span class="count-item"><span class="dot dot-blocked"></span>' + p.blocked_count + ' blocked</span>' : ''}
+              ${p.done_count > 0 ? '<span class="count-item"><span class="dot dot-done"></span>' + p.done_count + ' done</span>' : ''}
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    function sortAndRenderProjects() {
+      projectSortField = document.getElementById('project-sort').value;
+      const sorted = sortProjects(cachedProjects, projectSortField, projectSortAsc);
+      renderProjectCards(sorted);
+    }
+
+    function toggleSortDirection() {
+      projectSortAsc = !projectSortAsc;
+      const btn = document.getElementById('sort-dir-btn');
+      btn.innerHTML = projectSortAsc ? '&#9660;' : '&#9650;';  // down arrow = default, up arrow = reversed
+      btn.title = projectSortAsc ? 'Default order' : 'Reversed order';
+      sortAndRenderProjects();
+    }
+
+    async function loadAllProjects() {
+      try {
+        const res = await fetch('/api/forge/projects');
+        if (!res.ok) throw new Error('API returned ' + res.status);
+        const projects = await res.json();
+        cachedProjects = projects || [];
+        sortAndRenderProjects();
+      } catch (err) {
+        document.getElementById('forge-projects').innerHTML =
+          '<span class="error-msg">Failed to load projects: ' + escapeHtml(err.message) + '</span>';
       }
     }
 
@@ -1103,6 +1511,7 @@
     loadBackups();
     loadForgeTasks();
     loadForgeActivity();
+    loadAllProjects();
 
     // Refresh everything every 60 seconds (fallback if SSE misses)
     setInterval(() => {
@@ -1112,6 +1521,7 @@
       loadBackups();
       loadForgeTasks();
       loadForgeActivity();
+      loadAllProjects();
     }, 60000);
   </script>
 </body>

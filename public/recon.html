@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ForgeRecon - Competitive Intelligence</title>
+<script src="/sentinel-nav.js"></script>
 <style>
   /* ============================================
      FORGERECON - Competitive Intelligence Dashboard
@@ -123,27 +124,6 @@
     align-items: center;
     gap: 16px;
   }
-
-  .header-nav {
-    display: flex;
-    gap: 6px;
-  }
-
-  .nav-link {
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    padding: 6px 12px;
-    border-radius: 6px;
-    color: var(--text-dim);
-    text-decoration: none;
-    border: 1px solid transparent;
-    transition: all 0.2s;
-    font-family: var(--font-mono);
-  }
-
-  .nav-link:hover { color: var(--text-secondary); border-color: var(--border-subtle); }
-  .nav-link.active { color: var(--orange-primary); border-color: var(--orange-primary); background: var(--orange-dim); }
 
   .clock {
     font-family: var(--font-mono);
@@ -720,13 +700,6 @@
       <div class="header-subtitle">Competitive Intelligence</div>
     </div>
     <div class="header-right">
-      <nav class="header-nav">
-        <a href="/" class="nav-link">Sentinel</a>
-        <a href="/nexus.html" class="nav-link">Nexus</a>
-        <a href="/guard.html" class="nav-link">Guard</a>
-        <a href="/recon.html" class="nav-link active">Recon</a>
-        <a href="/voice.html" class="nav-link">Voice</a>
-      </nav>
       <div class="clock" id="clock">--:--:--</div>
     </div>
   </header>
@@ -824,7 +797,7 @@
 
   <!-- ====== FOOTER ====== -->
   <footer class="footer fade-in fade-in-delay-5">
-    ForgeRecon v1.0 &mdash; Competitive Intelligence &nbsp;|&nbsp; Powered by <a href="/">Sentinel</a> &nbsp;|&nbsp; <a href="/nexus.html">ForgeNexus</a>
+    ForgeRecon v1.0 &mdash; Competitive Intelligence
   </footer>
 
 </div>
