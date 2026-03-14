@@ -5,7 +5,7 @@
 **TheForge project_id:** 26
 **Status:** Active - Phase 1 (Scaffolding complete)
 **Category:** Infrastructure
-**Copyright:** 2026, TheForge, LLC
+**Copyright:** 2026, Forgeborn
 
 Real-time infrastructure monitoring and alerting dashboard for TheForge ecosystem. Monitors VMs, Docker containers, services, orchestrator progress, and backup status. Runs on Claudinator:3000 (the Ubuntu host machine). Provides instant visibility into all infrastructure without manually SSHing into each VM.
 
@@ -248,7 +248,7 @@ CREATE TABLE backups (
 {
     "port": 3000,
     "collection_interval_seconds": 30,
-    "theforge_db_path": "/srv/forge-share/AI_Stuff/ForgeTeam/theforge.db",
+    "theforge_db_path": "/srv/forge-share/AI_Stuff/EQUIPA/theforge.db",
     "hosts": [
         {
             "name": "claudinator",
@@ -423,7 +423,7 @@ For the `local` host (Claudinator), these run directly via `child_process.exec` 
 │  │ CPU: 2% M:128M│ │ CPU:15% M:2G │ │ CPU: 5% M: 512M    ││
 │  └──────────────┘ └──────────────┘ └──────────────────────┘│
 ├─────────────────────────────────────────────────────────────┤
-│  ForgeTeam Activity                                         │
+│  EQUIPA Activity                                            │
 │  Task 183: Write Sentinel spec .............. in_progress   │
 │  Task 184: Project scaffolding .............. todo          │
 │  Task 185: VM health collector .............. todo          │
