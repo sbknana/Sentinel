@@ -1,4 +1,4 @@
-// Copyright 2026, TheForge, LLC
+// Copyright 2026, Forgeborn
 const { getDb } = require('../db');
 const { execOnHost } = require('../ssh');
 const { broadcast } = require('../sse');
@@ -36,6 +36,8 @@ async function healCrashedContainers(host, containers) {
 
   for (const container of needsHealing) {
     // Skip containers in transient states — only restart exited/dead ones
+    // Also skip destroyed containers — they no longer exist and cannot be restarted
+    if (container.status === 'destroyed') continue;
     if (container.status !== 'exited' && container.status !== 'dead') {
       continue;
     }
