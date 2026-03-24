@@ -1,4 +1,4 @@
-// Copyright 2026, TheForge, LLC
+// Copyright 2026, Forgeborn
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
@@ -63,7 +63,8 @@ function initSchema() {
       uptime TEXT,
       cpu_percent REAL,
       memory_mb REAL,
-      auto_restart INTEGER NOT NULL DEFAULT 0
+      auto_restart INTEGER NOT NULL DEFAULT 0,
+      persistent INTEGER NOT NULL DEFAULT 0
     );
 
     CREATE TABLE IF NOT EXISTS alerts (
@@ -123,6 +124,12 @@ function initSchema() {
     CREATE INDEX IF NOT EXISTS idx_healing_log_time ON healing_log(executed_at);
     CREATE INDEX IF NOT EXISTS idx_backup_history_time ON backup_history(backup_name, checked_at);
   `);
+
+  // Migration: add persistent column to existing containers table
+  const cols = db.prepare("PRAGMA table_info(containers)").all();
+  if (!cols.some((c) => c.name === 'persistent')) {
+    db.exec("ALTER TABLE containers ADD COLUMN persistent INTEGER NOT NULL DEFAULT 0");
+  }
 }
 
 function close() {
