@@ -1,4 +1,4 @@
-// Copyright 2026, TheForge, LLC
+// Copyright 2026, Forgeborn
 const express = require('express');
 const { getDb } = require('../db');
 const { execOnHost } = require('../ssh');
@@ -6,8 +6,11 @@ const { execOnHost } = require('../ssh');
 const router = express.Router();
 
 // GET /api/containers - all containers across all hosts (latest snapshot)
+// By default, excludes destroyed containers. Pass ?include_destroyed=1 to include them.
 router.get('/', (req, res) => {
   const db = getDb();
+  const includeDestroyed = req.query.include_destroyed === '1';
+
   const containers = db.prepare(`
     SELECT c.*, h.name AS host_name
     FROM containers c
@@ -15,6 +18,7 @@ router.get('/', (req, res) => {
     WHERE c.collected_at = (
       SELECT MAX(c2.collected_at) FROM containers c2 WHERE c2.host_id = c.host_id
     )
+    ${includeDestroyed ? '' : "AND c.status != 'destroyed'"}
     ORDER BY h.name, c.name
   `).all();
   res.json(containers);
@@ -59,6 +63,35 @@ router.put('/:hostId/:name/auto-restart', (req, res) => {
 
   console.log(`[healing] auto_restart ${flag ? 'enabled' : 'disabled'} for "${name}" on host ${hostId}`);
   res.json({ container: name, host_id: Number(hostId), auto_restart: flag });
+});
+
+// PUT /api/containers/:hostId/:name/persistent - toggle persistent flag for a container
+// Persistent containers will alert when destroyed; non-persistent ones are silently removed.
+router.put('/:hostId/:name/persistent', (req, res) => {
+  const db = getDb();
+  const { hostId, name } = req.params;
+  const { enabled } = req.body;
+
+  if (typeof enabled !== 'boolean' && enabled !== 0 && enabled !== 1) {
+    return res.status(400).json({ error: 'Body must include "enabled" (boolean or 0/1)' });
+  }
+
+  const flag = enabled ? 1 : 0;
+
+  // Update persistent flag on the latest snapshot(s) for this container
+  const result = db.prepare(`
+    UPDATE containers SET persistent = ?
+    WHERE host_id = ? AND name = ? AND collected_at = (
+      SELECT MAX(collected_at) FROM containers WHERE host_id = ? AND name = ?
+    )
+  `).run(flag, hostId, name, hostId, name);
+
+  if (result.changes === 0) {
+    return res.status(404).json({ error: 'Container not found' });
+  }
+
+  console.log(`[docker] persistent ${flag ? 'enabled' : 'disabled'} for "${name}" on host ${hostId}`);
+  res.json({ container: name, host_id: Number(hostId), persistent: flag });
 });
 
 // POST /api/containers/:hostId/:name/restart - manually restart a container
