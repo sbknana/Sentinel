@@ -1,4 +1,4 @@
-// Copyright 2026, TheForge, LLC
+// Copyright 2026, Forgeborn
 const { getDb } = require('../db');
 const { execOnHost } = require('../ssh');
 const { broadcast } = require('../sse');
@@ -12,6 +12,10 @@ const DOCKER_STATS_CMD = "docker stats --no-stream --format '{{.Name}}\t{{.CPUPe
  * Collect Docker container data from a single host.
  * Runs docker ps -a for all containers and docker stats for resource usage.
  * Stores results in the containers table and broadcasts via SSE.
+ *
+ * After collecting, detects destroyed containers (previously monitored but no
+ * longer in docker ps -a output) and auto-removes non-persistent ones from
+ * monitoring instead of alerting "down."
  */
 async function collectDocker(host) {
   const db = getDb();
@@ -27,17 +31,16 @@ async function collectDocker(host) {
   }
 
   const containers = parsePsOutput(psOutput);
-  if (containers.length === 0) {
-    return [];
-  }
 
   // Get resource usage for running containers
   let statsOutput = '';
-  try {
-    statsOutput = await execOnHost(host, DOCKER_STATS_CMD);
-  } catch (err) {
-    // docker stats can fail if no containers are running — not fatal
-    console.warn(`[docker] Failed to get stats on ${host.name}: ${err.message}`);
+  if (containers.length > 0) {
+    try {
+      statsOutput = await execOnHost(host, DOCKER_STATS_CMD);
+    } catch (err) {
+      // docker stats can fail if no containers are running — not fatal
+      console.warn(`[docker] Failed to get stats on ${host.name}: ${err.message}`);
+    }
   }
 
   const stats = parseStatsOutput(statsOutput);
@@ -51,43 +54,52 @@ async function collectDocker(host) {
     }
   }
 
-  // Carry forward auto_restart flag from the previous snapshot for each container
-  const prevFlag = db.prepare(`
-    SELECT auto_restart FROM containers
+  // Carry forward auto_restart and persistent flags from the previous snapshot
+  const prevFlags = db.prepare(`
+    SELECT auto_restart, persistent FROM containers
     WHERE host_id = ? AND name = ?
     ORDER BY collected_at DESC
     LIMIT 1
   `);
 
   for (const container of containers) {
-    const prev = prevFlag.get(host.id, container.name);
+    const prev = prevFlags.get(host.id, container.name);
     container.auto_restart = prev ? prev.auto_restart : 0;
+    container.persistent = prev ? prev.persistent : 0;
   }
 
-  // Store in database
-  const insert = db.prepare(`
-    INSERT INTO containers (host_id, collected_at, container_id, name, image, status, uptime, cpu_percent, memory_mb, auto_restart)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
+  // --- Detect destroyed containers ---
+  // Get the set of container names we knew about on the last poll
+  const liveNames = new Set(containers.map((c) => c.name));
+  handleDestroyedContainers(db, host, liveNames, now);
 
-  const insertMany = db.transaction((rows) => {
-    for (const c of rows) {
-      insert.run(
-        host.id,
-        now,
-        c.container_id,
-        c.name,
-        c.image,
-        c.status,
-        c.uptime,
-        c.cpu_percent,
-        c.memory_mb,
-        c.auto_restart
-      );
-    }
-  });
+  // Store in database (even if containers is empty, the destroyed detection above still runs)
+  if (containers.length > 0) {
+    const insert = db.prepare(`
+      INSERT INTO containers (host_id, collected_at, container_id, name, image, status, uptime, cpu_percent, memory_mb, auto_restart, persistent)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
 
-  insertMany(containers);
+    const insertMany = db.transaction((rows) => {
+      for (const c of rows) {
+        insert.run(
+          host.id,
+          now,
+          c.container_id,
+          c.name,
+          c.image,
+          c.status,
+          c.uptime,
+          c.cpu_percent,
+          c.memory_mb,
+          c.auto_restart,
+          c.persistent
+        );
+      }
+    });
+
+    insertMany(containers);
+  }
 
   // Broadcast to SSE clients
   broadcast('container', {
@@ -98,6 +110,142 @@ async function collectDocker(host) {
   });
 
   return containers;
+}
+
+/**
+ * Detect containers that were previously monitored but no longer appear in
+ * docker ps -a output (i.e., they were destroyed/removed).
+ *
+ * - Non-persistent containers: auto-removed from monitoring with a log entry.
+ *   Any unresolved alerts for these containers are resolved automatically.
+ * - Persistent containers: a "destroyed" alert is fired (these are production
+ *   services that should NOT disappear silently).
+ *
+ * @param {object} db - The database instance
+ * @param {object} host - The host object
+ * @param {Set<string>} liveNames - Container names currently reported by docker ps -a
+ * @param {string} now - Current timestamp
+ */
+function handleDestroyedContainers(db, host, liveNames, now) {
+  // Get distinct container names from the most recent collection for this host
+  // (i.e., the last snapshot before the current poll)
+  const previousContainers = db.prepare(`
+    SELECT DISTINCT c.name, c.persistent, c.container_id
+    FROM containers c
+    WHERE c.host_id = ?
+      AND c.collected_at = (
+        SELECT MAX(c2.collected_at) FROM containers c2
+        WHERE c2.host_id = c.host_id
+      )
+  `).all(host.id);
+
+  for (const prev of previousContainers) {
+    if (liveNames.has(prev.name)) continue;
+
+    // This container was in the previous poll but is no longer in docker ps -a — it was destroyed
+    if (prev.persistent === 1) {
+      // Persistent container destroyed — this is noteworthy, fire an alert
+      firePersistentDestroyedAlert(db, host, prev, now);
+    } else {
+      // Ephemeral container destroyed — auto-remove from monitoring silently
+      autoRemoveDestroyedContainer(db, host, prev, now);
+    }
+  }
+}
+
+/**
+ * Auto-remove a destroyed ephemeral container from monitoring.
+ * Inserts a final "destroyed" snapshot so the timeline is clear,
+ * resolves any open alerts for this container, and logs the removal.
+ */
+function autoRemoveDestroyedContainer(db, host, container, now) {
+  console.log(`[docker] Container "${container.name}" destroyed — removed from monitoring on ${host.name}`);
+
+  // Insert a final snapshot with status "destroyed" so the timeline is complete
+  db.prepare(`
+    INSERT INTO containers (host_id, collected_at, container_id, name, image, status, uptime, cpu_percent, memory_mb, auto_restart, persistent)
+    VALUES (?, ?, ?, ?, NULL, 'destroyed', NULL, NULL, NULL, 0, 0)
+  `).run(host.id, now, container.container_id, container.name);
+
+  // Resolve any open alerts for this container
+  db.prepare(`
+    UPDATE alert_history
+    SET resolved_at = ?
+    WHERE host_id = ?
+      AND message LIKE ?
+      AND resolved_at IS NULL
+  `).run(now, host.id, `%${container.name}%`);
+
+  // Log to healing_log for audit trail
+  db.prepare(`
+    INSERT INTO healing_log (host_id, container_name, container_id, action, reason, result, error_message, executed_at)
+    VALUES (?, ?, ?, 'auto_remove', 'Container destroyed — no longer in docker ps -a', 'success', NULL, ?)
+  `).run(host.id, container.name, container.container_id, now);
+
+  // Broadcast removal event
+  broadcast('container_removed', {
+    host_id: host.id,
+    host_name: host.name,
+    container_name: container.name,
+    container_id: container.container_id,
+    reason: 'destroyed',
+    removed_at: now,
+  });
+}
+
+/**
+ * Fire an alert for a persistent container that was destroyed.
+ * Persistent containers (e.g., production services) should never disappear
+ * silently — this warrants a critical alert.
+ */
+function firePersistentDestroyedAlert(db, host, container, now) {
+  console.log(`[alert] CRITICAL: Persistent container "${container.name}" was destroyed on ${host.name}`);
+
+  // Insert a "destroyed" snapshot
+  db.prepare(`
+    INSERT INTO containers (host_id, collected_at, container_id, name, image, status, uptime, cpu_percent, memory_mb, auto_restart, persistent)
+    VALUES (?, ?, ?, ?, NULL, 'destroyed', NULL, NULL, NULL, 0, 1)
+  `).run(host.id, now, container.container_id, container.name);
+
+  // Find the container_down alert rule for this host
+  const rule = db.prepare(`
+    SELECT * FROM alerts
+    WHERE metric = 'container_down'
+      AND enabled = 1
+      AND (host_id IS NULL OR host_id = ?)
+    LIMIT 1
+  `).get(host.id);
+
+  if (rule) {
+    const message = `Persistent container "${container.name}" was DESTROYED on ${host.name} — expected to be running`;
+
+    // Check cooldown to avoid duplicate alerts
+    const recent = db.prepare(`
+      SELECT id FROM alert_history
+      WHERE alert_id = ?
+        AND host_id = ?
+        AND message LIKE ?
+        AND fired_at > datetime('now', ?)
+        AND resolved_at IS NULL
+    `).get(rule.id, host.id, `%${container.name}%DESTROYED%`, `-${rule.cooldown_minutes} minutes`);
+
+    if (!recent) {
+      db.prepare(`
+        INSERT INTO alert_history (alert_id, host_id, fired_at, metric_value, message)
+        VALUES (?, ?, ?, ?, ?)
+      `).run(rule.id, host.id, now, 0, message);
+
+      broadcast('alert', {
+        host_id: host.id,
+        host_name: host.name,
+        severity: 'critical',
+        message,
+        container: container.name,
+        status: 'destroyed',
+        fired_at: now,
+      });
+    }
+  }
 }
 
 /**
@@ -227,6 +375,9 @@ function parseMemToMb(memStr) {
 
 /**
  * Check for stopped/crashed containers and fire container_down alerts.
+ * Only alerts for containers that EXIST but are in an unhealthy/stopped state.
+ * Destroyed containers (no longer in docker ps -a) are handled separately
+ * by handleDestroyedContainers() and do NOT trigger alerts here.
  * Respects cooldown to avoid alert spam.
  */
 function checkContainerAlerts(host, containers) {
@@ -242,7 +393,11 @@ function checkContainerAlerts(host, containers) {
 
   if (alertRules.length === 0) return;
 
-  const nonRunning = containers.filter((c) => c.status !== 'running');
+  // Only alert for containers that EXIST but are not running.
+  // "destroyed" status containers are handled by handleDestroyedContainers.
+  const nonRunning = containers.filter(
+    (c) => c.status !== 'running' && c.status !== 'destroyed'
+  );
   if (nonRunning.length === 0) return;
 
   const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
@@ -310,4 +465,13 @@ async function collectDockerAll() {
   console.log(`[docker] ${summary.join(', ')}`);
 }
 
-module.exports = { collectDocker, collectDockerAll, checkContainerAlerts, parsePsOutput, parseStatsOutput, parseStatus, parseMemToMb };
+module.exports = {
+  collectDocker,
+  collectDockerAll,
+  checkContainerAlerts,
+  handleDestroyedContainers,
+  parsePsOutput,
+  parseStatsOutput,
+  parseStatus,
+  parseMemToMb,
+};
