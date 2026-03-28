@@ -1,4 +1,4 @@
-// Copyright 2026, TheForge, LLC
+// Copyright 2026, Forgeborn
 const { execFile } = require('child_process');
 const { getDb } = require('../db');
 const config = require('../config');
@@ -35,7 +35,7 @@ function parseResticOutput(stdout) {
   if (!snapshots || snapshots.length === 0) {
     return { error: false, lastSuccess: null, details: 'No snapshots found in repository' };
   }
-  const latest = snapshots[0];
+  const latest = snapshots.sort((a, b) => new Date(b.time) - new Date(a.time))[0];
   const lastSuccess = latest.time; // ISO 8601 timestamp from restic
   const hostname = latest.hostname || 'unknown';
   const paths = (latest.paths || []).join(', ');
@@ -53,7 +53,7 @@ function parseResticOutput(stdout) {
 function checkResticLocal(backupConfig) {
   return new Promise((resolve) => {
     const env = buildResticEnv(backupConfig);
-    const args = ['snapshots', '--repo', backupConfig.repo_path, '--json', '--latest', '1'];
+    const args = ['snapshots', '--repo', backupConfig.repo_path, '--json', '--latest', '1', '--no-lock'];
 
     execFile('restic', args, { timeout: RESTIC_TIMEOUT_MS, env }, (err, stdout, stderr) => {
       if (err) {
@@ -94,7 +94,7 @@ async function checkResticRemote(backupConfig, host) {
   }
 
   const envPrefix = envParts.length > 0 ? envParts.join(' ') + ' ' : '';
-  const cmd = `${envPrefix}restic snapshots --repo '${backupConfig.repo_path}' --json --latest 1`;
+  const cmd = `${envPrefix}restic snapshots --repo '${backupConfig.repo_path}' --json --latest 1 --no-lock`;
 
   try {
     const stdout = await execOnHost(host, cmd, RESTIC_TIMEOUT_MS);

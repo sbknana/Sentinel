@@ -1,4 +1,4 @@
-// Copyright 2026, TheForge, LLC
+// Copyright 2026, Forgeborn
 const { getDb } = require('../db');
 const { broadcast } = require('../sse');
 

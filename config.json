@@ -13,13 +13,6 @@
             "ssh_host": "10.10.10.2",
             "ssh_user": "user",
             "ssh_key_path": "/home/user/.ssh/id_ed25519"
-        },
-        {
-            "name": "arcanedesk-vm",
-            "type": "ssh",
-            "ssh_host": "10.10.10.3",
-            "ssh_user": "user",
-            "ssh_key_path": "/home/user/.ssh/id_ed25519"
         }
     ],
     "default_alerts": [
@@ -70,8 +63,8 @@
         {
             "name": "local-restic",
             "type": "restic",
-            "description": "Local backups to Windows box",
-            "repo_path": "/mnt/backup-windows/claudinator-backups",
+            "description": "Local backups to Gort external drive",
+            "repo_path": "sftp:root@192.168.0.22:/mnt/backup/claudinator-backups",
             "password_file": "/home/user/.restic-password",
             "stale_hours": 26
         },
@@ -143,9 +136,33 @@
             ]
         },
         "industries": {
-            "auto-repair": ["Tekmetric", "Shopmonkey", "Shop-Ware", "Mitchell 1", "AutoLeap", "auto repair", "shop management"],
-            "tcg": ["TCGplayer", "Moxfield", "Archidekt", "Delver Lens", "MTG", "Pokemon", "card grading", "LGS"],
-            "blockchain": ["Ethereum", "Solana", "DeFi", "cryptocurrency", "blockchain", "crypto"]
+            "auto-repair": [
+                "Tekmetric",
+                "Shopmonkey",
+                "Shop-Ware",
+                "Mitchell 1",
+                "AutoLeap",
+                "auto repair",
+                "shop management"
+            ],
+            "tcg": [
+                "TCGplayer",
+                "Moxfield",
+                "Archidekt",
+                "Delver Lens",
+                "MTG",
+                "Pokemon",
+                "card grading",
+                "LGS"
+            ],
+            "blockchain": [
+                "Ethereum",
+                "Solana",
+                "DeFi",
+                "cryptocurrency",
+                "blockchain",
+                "crypto"
+            ]
         }
     }
 }

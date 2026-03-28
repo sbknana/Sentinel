@@ -1,5 +1,7 @@
 // Copyright 2026, Forgeborn
 const express = require('express');
+const https = require('https');
+const fs = require('fs');
 const path = require('path');
 const config = require('./config');
 const { getDb, close: closeDb } = require('./db');
@@ -45,16 +47,41 @@ app.get('/health', (req, res) => {
 getDb();
 seedFromConfig();
 
+// ── HTTP server ──────────────────────────────────────────────
 const server = app.listen(config.port, () => {
   console.log(`Sentinel listening on http://localhost:${config.port}`);
   scheduler.start();
 });
+
+// ── HTTPS server (for Web Speech API / mic access) ───────────
+const certsDir = path.join(__dirname, '..', 'certs');
+const keyPath = path.join(certsDir, 'key.pem');
+const certPath = path.join(certsDir, 'cert.pem');
+
+let httpsServer = null;
+if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
+  const httpsPort = config.port + 1; // 3003
+  try {
+    const sslOpts = {
+      key: fs.readFileSync(keyPath),
+      cert: fs.readFileSync(certPath),
+    };
+    httpsServer = https.createServer(sslOpts, app).listen(httpsPort, () => {
+      console.log(`Sentinel HTTPS listening on https://localhost:${httpsPort}`);
+    });
+  } catch (e) {
+    console.warn('HTTPS startup failed (continuing HTTP-only):', e.message);
+  }
+} else {
+  console.log('No certs found at', certsDir, '— HTTPS disabled. Voice recognition requires HTTPS.');
+}
 
 // Graceful shutdown
 function shutdown() {
   console.log('Shutting down...');
   scheduler.stop();
   server.close(() => {
+    if (httpsServer) httpsServer.close();
     closeDb();
     process.exit(0);
   });

@@ -5,16 +5,17 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "node --watch src/server.js"
+    "dev": "node --watch src/server.js",
+    "build": "echo 'No build step required for plain Node.js project'"
   },
   "keywords": [
     "monitoring",
     "infrastructure",
     "dashboard"
   ],
-  "author": "TheForge, LLC",
+  "author": "Forgeborn",
   "license": "MIT",
-  "copyright": "Copyright 2026, TheForge, LLC",
+  "copyright": "Copyright 2026, Forgeborn",
   "dependencies": {
     "better-sqlite3": "^11.0.0",
     "express": "^4.21.0",

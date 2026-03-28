@@ -1,4 +1,4 @@
-// Copyright 2026, TheForge, LLC
+// Copyright 2026, Forgeborn
 //
 // Central collector re-exports. Individual collectors are imported
 // directly by the scheduler, but this file provides a convenient

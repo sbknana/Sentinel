@@ -1,4 +1,4 @@
-// Copyright 2026, TheForge, LLC
+// Copyright 2026, Forgeborn
 const fs = require('fs');
 const { execFileSync } = require('child_process');
 const { Client } = require('ssh2');

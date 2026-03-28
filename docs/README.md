@@ -272,4 +272,4 @@ Edit alert rules in `config.json`:
 
 ## License
 
-Copyright © 2026, TheForge, LLC. All rights reserved.
+Copyright © 2026, Forgeborn. All rights reserved.

@@ -1,4 +1,4 @@
-// Copyright 2026, TheForge, LLC
+// Copyright 2026, Forgeborn
 const express = require('express');
 const { addClient, getClientCount } = require('../sse');
 
